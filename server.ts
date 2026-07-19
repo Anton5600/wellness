@@ -49,16 +49,15 @@ async function startServer() {
 Твой тон должен быть теплым, заботливым, без лишней эзотерики, но с глубоким пониманием психологии. Обращайся на "ты". Не используй приветствия, сразу переходи к сути. Форматируй текст чисто (без markdown-звездочек, используй обычные абзацы).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite", // Using flash lite for speed
+        model: "gemini-2.5-flash", 
         contents: prompt,
       });
 
       res.json({ result: response.text });
-    } catch (error) {
-      console.error("Gemini API Error:", error);
-      res.status(500).json({ error: "Failed to generate synthesis" });
-    }
-  });
+    } catch (error: any) {
+      console.error("Gemini API Error details:", error?.status, error?.message, error);
+      res.status(500).json({ error: "Failed to generate synthesis: " + (error?.message || "Unknown error") });
+    };
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
