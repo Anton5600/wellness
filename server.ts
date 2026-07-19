@@ -15,13 +15,14 @@ async function startServer() {
   app.post("/api/gemini/synthesis", async (req, res) => {
     try {
       const { testResult, card, quote } = req.body;
+
       if (!testResult || !card) {
         return res.status(400).json({ error: "Missing test result or card" });
       }
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        return res.status(400).json({ error: "API key is not configured" });
+        return res.status(400).json({ error: "Ключ API не настроен на сервере" });
       }
 
       const ai = new GoogleGenAI({
@@ -35,17 +36,13 @@ async function startServer() {
 
       const prompt = `Ты - эмпатичный и мудрый персональный советник (ассистент) в приложении для психологической поддержки "Внутренний компас".
 Задача: Провести краткий, глубокий и вдохновляющий синтез между текущим состоянием пользователя (по результатам теста) и его Метафорической картой дня.
-
 Входные данные:
 - Текущее состояние пользователя: "${testResult.title}" (${testResult.headline})
 - Описание состояния: ${testResult.description}
 - Карта дня пользователя: "${card.title}"
 - Послание карты: "${card.message}"
 - Цитата дня (опционально): "${quote?.text || ''}"
-
-Сформируй персональное напутствие (2-3 небольших абзаца). 
-1. Подчеркни связь между эмоциональным состоянием и смыслом карты. 
-2. Дай мягкий, поддерживающий совет на сегодняшний день.
+Сформируй персональное напутствие (2-3 небольших абзаца). 1. Подчеркни связь между эмоциональным состоянием и смыслом карты. 2. Дай мягкий, поддерживающий совет на сегодняшний день.
 Твой тон должен быть теплым, заботливым, без лишней эзотерики, но с глубоким пониманием психологии. Обращайся на "ты". Не используй приветствия, сразу переходи к сути. Форматируй текст чисто (без markdown-звездочек, используй обычные абзацы).`;
 
       const response = await ai.models.generateContent({
@@ -56,7 +53,7 @@ async function startServer() {
       res.json({ result: response.text });
     } catch (error: any) {
       console.error("Gemini API Error details:", error?.status, error?.message, error);
-      res.status(500).json({ error: "Failed to generate synthesis: " + (error?.message || "Unknown error") });
+      res.status(500).json({ error: "Ошибка генерации ИИ: " + (error?.message || "Неизвестная ошибка") });
     }
   });
 
