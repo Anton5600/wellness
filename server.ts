@@ -15,27 +15,18 @@ async function startServer() {
   app.post("/api/gemini/synthesis", async (req, res) => {
     try {
       const { testResult, card, quote } = req.body;
-
       if (!testResult || !card) {
         return res.status(400).json({ error: "Missing test result or card" });
       }
 
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.DEEPSEEK_API_KEY;
       if (!apiKey) {
-        return res.status(400).json({ error: "API key is not configured" });
+        return res.status(400).json({ error: "DEEPSEEK_API_KEY is not configured" });
       }
-
-      const ai = new GoogleGenAI({
-        apiKey,
-        httpOptions: {
-          headers: {
-            "User-Agent": "aistudio-build",
-          },
-        },
-      });
 
       const prompt = `Ты - эмпатичный и мудрый персональный советник (ассистент) в приложении для психологической поддержки "Внутренний компас".
 Задача: Провести краткий, глубокий и вдохновляющий синтез между текущим состоянием пользователя (по результатам теста) и его Метафорической картой дня.
+
 Входные данные:
 - Текущее состояние пользователя: "${testResult.title}" (${testResult.headline})
 - Описание состояния: ${testResult.description}
@@ -46,17 +37,31 @@ async function startServer() {
 Сформируй персональное напутствие (2-3 небольших абзаца). 
 1. Подчеркни связь между эмоциональным состоянием и смыслом карты. 
 2. Дай мягкий, поддерживающий совет на сегодняшний день.
-
 Твой тон должен быть теплым, заботливым, без лишней эзотерики, но с глубоким пониманием психологии. Обращайся на "ты". Не используй приветствия, сразу переходи к сути. Форматируй текст чисто (без markdown-звездочек, используй обычные абзацы).`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash", 
-        contents: prompt,
+      const deepseekResponse = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [{ role: "user", content: prompt }]
+        }),
       });
 
-      res.json({ result: response.text });
+      if (!deepseekResponse.ok) {
+        const errorData = await deepseekResponse.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP error ${deepseekResponse.status}`);
+      }
+
+      const responseData = await deepseekResponse.json();
+      const synthesisText = responseData.choices?.[0]?.message?.content || "";
+
+      res.json({ result: synthesisText });
     } catch (error: any) {
-      console.error("Gemini API Error details:", error?.status, error?.message, error);
+      console.error("DeepSeek API Error details:", error?.message, error);
       res.status(500).json({ error: "Failed to generate synthesis: " + (error?.message || "Unknown error") });
     }
   });
