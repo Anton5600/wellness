@@ -1,0 +1,132 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user is an admin
+    function isAdmin() {
+      return (isAuthenticated() && request.auth.token.email == 'akarpoff79@gmail.com') ||
+             (isAuthenticated() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+    
+    // Validate required fields exist
+    function hasExactFields(fields) {
+      return request.resource.data.keys().hasAll(fields) && request.resource.data.keys().size() == fields.size();
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    
+    function isValidEmotionHistoryEntry(data) {
+      return hasExactFields(['userId', 'emotionKey', 'timestamp']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 100 &&
+             data.emotionKey is string && data.emotionKey.size() > 0 && data.emotionKey.size() < 100 &&
+             data.timestamp is number && data.timestamp > 0;
+    }
+
+    function isValidUserOil(data) {
+      return hasExactFields(['userId', 'oilId', 'addedAt']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 100 &&
+             data.oilId is string && data.oilId.size() > 0 && data.oilId.size() < 100 &&
+             data.addedAt is number && data.addedAt > 0;
+    }
+
+    function isValidAdminEntry(data) {
+      return hasExactFields(['email', 'grantedAt']) &&
+             data.email is string &&
+             data.grantedAt is number;
+    }
+
+    function isValidOrder(data) {
+      // Not using hasExactFields here to be slightly open for optional deliveryAddress
+      return data.keys().hasAll(['userId', 'items', 'totalAmount', 'status', 'createdAt', 'contactName', 'contactPhone']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 100 &&
+             data.items is list && data.items.size() > 0 && data.items.size() <= 100 &&
+             data.totalAmount is number && data.totalAmount >= 0 &&
+             data.status is string && data.status.size() > 0 && data.status.size() < 50 &&
+             data.createdAt is number && data.createdAt > 0 &&
+             data.contactName is string && data.contactName.size() <= 200 &&
+             data.contactPhone is string && data.contactPhone.size() <= 50;
+    }
+
+    function isValidOil(data) {
+      return data.keys().hasAll(['name', 'description', 'icon', 'price']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.description is string && data.description.size() <= 500 &&
+             data.icon is string && data.icon.size() > 0 && data.icon.size() < 50 &&
+             data.price is number && data.price >= 0;
+    }
+
+    // ===============================================================
+    // Collections
+    // ===============================================================
+
+    match /admins/{docId} {
+      allow read: if isAuthenticated() && request.auth.uid == docId; // users can check if they are admin
+      // Only an existing admin can add new admins, or we manually add them in Firebase console
+      allow write: if isAdmin() && isValidAdminEntry(request.resource.data);
+    }
+
+    match /emotionHistory/{docId} {
+      // Users can read their own history. Admins can read all history.
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Users can only create history for themselves, and data must be valid and size-limited
+      allow create: if isAuthenticated() && 
+                       isOwner(request.resource.data.userId) && 
+                       isValidEmotionHistoryEntry(request.resource.data);
+      
+      // Users cannot update history (append-only log)
+      allow update: if false;
+      
+      // Users can delete their own history. Admins can delete any history.
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /userOils/{docId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      
+      allow create: if isAuthenticated() && 
+                       isOwner(request.resource.data.userId) && 
+                       isValidUserOil(request.resource.data);
+      
+      allow update: if false;
+      
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /oils/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidOil(request.resource.data);
+    }
+
+    match /orders/{docId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      
+      allow create: if isAuthenticated() && 
+                       isOwner(request.resource.data.userId) && 
+                       isValidOrder(request.resource.data);
+      
+      // Admins can manage orders (e.g., change status)
+      allow update: if isAdmin();
+      
+      // Admins can delete orders
+      allow delete: if isAdmin();
+    }
+  }
+}
