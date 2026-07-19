@@ -57,7 +57,8 @@ async function startServer() {
     } catch (error: any) {
       console.error("Gemini API Error details:", error?.status, error?.message, error);
       res.status(500).json({ error: "Failed to generate synthesis: " + (error?.message || "Unknown error") });
-    };
+    }
+  });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
