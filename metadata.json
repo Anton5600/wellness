@@ -1,0 +1,6 @@
+{
+  "name": "doterra-emotional-wellness",
+  "description": "An application to help users identify their emotional state through a quiz and receive personalized recommendations for botanical support using essential oils. It tracks emotional history and visualizes progress over time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

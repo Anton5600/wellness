@@ -1,0 +1,48 @@
+{
+  "name": "wellness",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "preview": "vite preview",
+    "android": "npx cap open android",
+    "ios": "npx cap open ios",
+    "sync": "npx cap sync"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0",
+    "@capacitor/local-notifications": "^8.0.2",
+    "@google/genai": "^2.10.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "firebase": "^12.9.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.23.0",
+    "recharts": "^3.7.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.2.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "esbuild": "^0.28.1",
+    "tsx": "^4.23.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "An application to help users identify their emotional state through a quiz and receive personalized recommendations for botanical support using essential oils."
+}

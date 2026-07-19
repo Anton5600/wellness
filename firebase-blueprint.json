@@ -1,0 +1,152 @@
+{
+  "entities": {
+    "EmotionHistoryEntry": {
+      "title": "EmotionHistoryEntry",
+      "description": "A record of a user's emotion at a specific time.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who recorded the emotion."
+        },
+        "emotionKey": {
+          "type": "string",
+          "description": "The key representing the selected emotion."
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "The time the emotion was recorded (Unix timestamp in milliseconds)."
+        }
+      },
+      "required": ["userId", "emotionKey", "timestamp"]
+    },
+    "UserOil": {
+      "title": "UserOil",
+      "description": "A record of an essential oil added to a user's medicine cabinet.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who owns the oil."
+        },
+        "oilId": {
+          "type": "string",
+          "description": "The ID of the oil from the catalog."
+        },
+        "addedAt": {
+          "type": "number",
+          "description": "The time the oil was added (Unix timestamp in milliseconds)."
+        }
+      },
+      "required": ["userId", "oilId", "addedAt"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "A user who is an administrator.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "The email of the admin."
+        },
+        "grantedAt": {
+          "type": "number",
+          "description": "The time the admin role was granted (Unix timestamp in milliseconds)."
+        }
+      },
+      "required": ["email", "grantedAt"]
+    },
+    "Oil": {
+      "title": "Oil",
+      "description": "Essential oil catalog item.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        }
+      },
+      "required": ["name", "description", "icon", "price"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A user's order for essential oils.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who placed the order."
+        },
+        "items": {
+          "type": "array",
+          "description": "The items in the order."
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total amount in RUB."
+        },
+        "status": {
+          "type": "string",
+          "description": "Order status: pending, processing, shipped, delivered, cancelled."
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "The time the order was created."
+        },
+        "contactName": {
+          "type": "string",
+          "description": "Contact name for the order."
+        },
+        "contactPhone": {
+          "type": "string",
+          "description": "Contact phone for the order."
+        },
+        "deliveryAddress": {
+          "type": "string",
+          "description": "Delivery address."
+        }
+      },
+      "required": ["userId", "items", "totalAmount", "status", "createdAt", "contactName", "contactPhone"]
+    }
+  },
+  "firestore": {
+    "/admins/{docId}": {
+      "schema": {
+        "$ref": "#/entities/Admin"
+      },
+      "description": "Collection storing admin users. The docId is the UID."
+    },
+    "/oils/{docId}": {
+      "schema": {
+        "$ref": "#/entities/Oil"
+      },
+      "description": "Collection storing oil catalog items. Doc ID is the oil ID."
+    },
+    "/orders/{docId}": {
+      "schema": {
+        "$ref": "#/entities/Order"
+      },
+      "description": "Collection storing user orders."
+    },
+    "/emotionHistory/{docId}": {
+      "schema": {
+        "$ref": "#/entities/EmotionHistoryEntry"
+      },
+      "description": "Collection storing all user emotion history records."
+    },
+    "/userOils/{docId}": {
+      "schema": {
+        "$ref": "#/entities/UserOil"
+      },
+      "description": "Collection storing user's medicine cabinet (inventory of oils)."
+    }
+  }
+}
