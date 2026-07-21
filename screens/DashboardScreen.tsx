@@ -9,6 +9,19 @@ import BottomNavBar from '../components/BottomNavBar';
 import { useCart } from '../context/CartContext';
 import { METAPHORIC_CARDS, MetaphoricCard } from '../data/cards';
 
+const LOADING_PHRASES = [
+  "Настраиваем нейронные связи на дзен...",
+  "Завариваем виртуальный чай, ожидайте...",
+  "Собираем звезды для вашего напутствия...",
+  "Синхронизируем алгоритмы с вашей аурой...",
+  "Укрываем данные теплым пледом...",
+  "Вслушиваемся в цифровой шепот Вселенной...",
+  "Загружаем порцию доброты и спокойствия...",
+  "Вычисляем траекторию внутреннего баланса...",
+  "Синтезируем смысл из нулей, единиц и любви...",
+  "Прогреваем серверы лучами виртуального солнца..."
+];
+
 const CartIcon: React.FC<{ navigate: any }> = ({ navigate }) => {
   const { cartCount } = useCart();
   return (
@@ -40,6 +53,18 @@ const DashboardScreen: React.FC = () => {
   
   const [synthesisText, setSynthesisText] = useState<string | null>(null);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [loadingPhrase, setLoadingPhrase] = useState(LOADING_PHRASES[0]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isSynthesizing) {
+      setLoadingPhrase(LOADING_PHRASES[Math.floor(Math.random() * LOADING_PHRASES.length)]);
+      interval = setInterval(() => {
+        setLoadingPhrase(LOADING_PHRASES[Math.floor(Math.random() * LOADING_PHRASES.length)]);
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [isSynthesizing]);
 
   useEffect(() => {
     if (user) {
@@ -353,10 +378,13 @@ const DashboardScreen: React.FC = () => {
                                 className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white py-3 rounded-xl font-bold transition-all disabled:opacity-50"
                             >
                                 {isSynthesizing ? (
-                                    <>
-                                        <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                                        <span>Синтезирую...</span>
-                                    </>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                            <span>Ожидание...</span>
+                                        </div>
+                                        <span className="text-xs font-normal opacity-90 animate-pulse">{loadingPhrase}</span>
+                                    </div>
                                 ) : (
                                     <>
                                         <span className="material-symbols-outlined">insights</span>
