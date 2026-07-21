@@ -147,10 +147,11 @@ const CartScreen: React.FC = () => {
                 <span className="text-sage">Доставка</span>
                 <span className="font-medium text-forest dark:text-white">Рассчитывается отдельно</span>
               </div>
-              <div className="flex justify-between items-end">
+              <div className="flex justify-between items-end mb-2">
                 <span className="font-bold text-forest dark:text-white text-lg">Итого (розница)</span>
                 <span className="font-extrabold text-primary text-2xl">{totalAmount} ₽</span>
               </div>
+              <p className="text-xs text-sage dark:text-gray-400 mb-4">* Доставка оплачивается отдельно 390₽ Почтой России</p>
 
               {!showCheckout ? (
                 <div className="mt-6 flex flex-col gap-3">
