@@ -9,6 +9,19 @@ import BottomNavBar from '../components/BottomNavBar';
 import { useCart } from '../context/CartContext';
 import { METAPHORIC_CARDS, MetaphoricCard } from '../data/cards';
 
+const LOADING_PHRASES = [
+  "Настраиваем нейронные связи на дзен...",
+  "Завариваем виртуальный чай, ожидайте...",
+  "Собираем звезды для вашего напутствия...",
+  "Синхронизируем алгоритмы с вашей аурой...",
+  "Укрываем данные теплым пледом...",
+  "Вслушиваемся в цифровой шепот Вселенной...",
+  "Загружаем порцию доброты и спокойствия...",
+  "Вычисляем траекторию внутреннего баланса...",
+  "Синтезируем смысл из нулей, единиц и любви...",
+  "Прогреваем серверы лучами виртуального солнца..."
+];
+
 const CartIcon: React.FC<{ navigate: any }> = ({ navigate }) => {
   const { cartCount } = useCart();
   return (
@@ -37,6 +50,21 @@ const DashboardScreen: React.FC = () => {
   // Card of the day state
   const [cardRevealed, setCardRevealed] = useState(false);
   const [dailyCard, setDailyCard] = useState<MetaphoricCard | null>(null);
+  
+  const [synthesisText, setSynthesisText] = useState<string | null>(null);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [loadingPhrase, setLoadingPhrase] = useState(LOADING_PHRASES[0]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isSynthesizing) {
+      setLoadingPhrase(LOADING_PHRASES[Math.floor(Math.random() * LOADING_PHRASES.length)]);
+      interval = setInterval(() => {
+        setLoadingPhrase(LOADING_PHRASES[Math.floor(Math.random() * LOADING_PHRASES.length)]);
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [isSynthesizing]);
 
   useEffect(() => {
     if (user) {
@@ -131,6 +159,30 @@ const DashboardScreen: React.FC = () => {
       if (diffDays === 1) return `1 день назад`;
       
       return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  }
+
+  const handleSynthesis = async () => {
+    if (!latestEmotion || !dailyCard) return;
+    setIsSynthesizing(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/gemini/synthesis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testResult: latestEmotion, card: dailyCard, quote })
+      });
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        alert(data.error || "Произошла ошибка при синтезе.");
+      } else if (data.result) {
+        setSynthesisText(data.result);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка сети при запросе синтеза.");
+    } finally {
+      setIsSynthesizing(false);
+    }
   }
 
   return (
@@ -302,6 +354,57 @@ const DashboardScreen: React.FC = () => {
             </div>
         </div>
       </section>
+
+      {latestEmotion && cardRevealed && dailyCard && (
+        <section className="px-6 pb-8">
+            <div className="bg-gradient-to-br from-primary/20 to-sage/20 dark:from-primary/10 dark:to-sage/10 rounded-2xl p-6 border border-primary/30 relative overflow-hidden">
+                <div className="absolute -top-10 -right-10 text-primary opacity-10">
+                    <span className="material-symbols-outlined" style={{ fontSize: 150 }}>magic_button</span>
+                </div>
+                <div className="relative z-10 flex flex-col items-start gap-3">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="material-symbols-outlined text-primary">psychiatry</span>
+                        <h3 className="text-forest dark:text-white text-lg font-bold">ИИ-Советник</h3>
+                    </div>
+                    
+                    {!synthesisText ? (
+                        <>
+                            <p className="text-sm text-forest/80 dark:text-white/80 leading-relaxed mb-2">
+                                Нейросеть проанализирует ваше состояние («{latestEmotion.title}») и Карту дня («{dailyCard.title}»), чтобы дать персональный совет.
+                            </p>
+                            <button 
+                                onClick={handleSynthesis}
+                                disabled={isSynthesizing}
+                                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white py-3 rounded-xl font-bold transition-all disabled:opacity-50"
+                            >
+                                {isSynthesizing ? (
+                                    <div className="flex flex-col items-center gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                            <span>Ожидание...</span>
+                                        </div>
+                                        <span className="text-xs font-normal opacity-90 animate-pulse">{loadingPhrase}</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined">insights</span>
+                                        <span>Получить напутствие</span>
+                                    </>
+                                )}
+                            </button>
+                        </>
+                    ) : (
+                        <div className="bg-white/60 dark:bg-black/20 rounded-xl p-4 text-sm text-forest dark:text-gray-200 leading-relaxed space-y-3">
+                            {synthesisText.split('\n\n').map((paragraph, i) => (
+                                <p key={i}>{paragraph}</p>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </section>
+      )}
+
       <BottomNavBar />
     </div>
   );
