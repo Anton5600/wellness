@@ -12,7 +12,7 @@ async function startServer() {
   app.use(express.json());
 
   // API Routes
-  app.post("/api/gemini/synthesis", async (req, res) => {
+  app.post("/api/ai/synthesis", async (req, res) => {
     try {
       const { testResult, card, quote } = req.body;
       if (!testResult || !card) {
