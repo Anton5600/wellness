@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
 import { getEmotionHistory } from '../services/firestoreService';
 import { EmotionHistoryEntry } from '../types';
@@ -164,22 +165,41 @@ const DashboardScreen: React.FC = () => {
   const handleSynthesis = async () => {
     if (!latestEmotion || !dailyCard) return;
     setIsSynthesizing(true);
+    let resolvedApiUrl = '';
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${apiUrl}/api/gemini/synthesis`, {
+      // Для мобильных устройств принудительно используем Render, если VITE_API_URL не задан правильно для продакшена
+      if (Capacitor.isNativePlatform()) {
+        resolvedApiUrl = 'https://wellness-t3q6.onrender.com';
+      } else {
+        resolvedApiUrl = import.meta.env.VITE_API_URL || '';
+      }
+      
+      console.log(`Отправка запроса на: ${resolvedApiUrl}/api/ai/synthesis`);
+      
+      const response = await fetch(`${resolvedApiUrl}/api/ai/synthesis`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ testResult: latestEmotion, card: dailyCard, quote })
       });
-      const data = await response.json();
+      
+      console.log(`Статус ответа: ${response.status}`);
+      
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (jsonErr) {
+        throw new Error(`Invalid JSON response: ${text.slice(0, 50)}...`);
+      }
+      
       if (!response.ok || data.error) {
         alert(data.error || "Произошла ошибка при синтезе.");
       } else if (data.result) {
         setSynthesisText(data.result);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Ошибка сети при запросе синтеза.");
+      alert(`Ошибка сети при запросе синтеза. URL: ${resolvedApiUrl}/api/ai/synthesis. Детали: ${e.message || JSON.stringify(e)}`);
     } finally {
       setIsSynthesizing(false);
     }
