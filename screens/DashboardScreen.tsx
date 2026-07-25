@@ -9,6 +9,7 @@ import { EMOTIONS } from '../constants';
 import BottomNavBar from '../components/BottomNavBar';
 import { useCart } from '../context/CartContext';
 import { METAPHORIC_CARDS, MetaphoricCard } from '../data/cards';
+import { getQuoteForDay, getRandomQuote } from '../data/quotes';
 
 const LOADING_PHRASES = [
   "Настраиваем нейронные связи на дзен...",
@@ -45,8 +46,8 @@ const DashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const [history, setHistory] = useState<EmotionHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [quote, setQuote] = useState<{text: string, author: string} | null>(null);
-  const [quoteLoading, setQuoteLoading] = useState(true);
+  const [quote, setQuote] = useState<{text: string, author: string} | null>(getQuoteForDay());
+  const [quoteLoading, setQuoteLoading] = useState(false);
 
   // Card of the day state
   const [cardRevealed, setCardRevealed] = useState(false);
@@ -119,11 +120,10 @@ const DashboardScreen: React.FC = () => {
         });
       } catch (error) {
         console.error("Ошибка при загрузке цитаты:", error);
-        // Резервная цитата на случай, если API недоступно
-        setQuote({
-          text: "Улыбнись миру, и он улыбнется тебе в ответ.",
-          author: "Народная мудрость"
-        });
+        // Резервная цитата дня из нашей локальной базы на случай, если API недоступно
+        if (!quote) {
+          setQuote(getQuoteForDay());
+        }
       } finally {
         setQuoteLoading(false);
       }
@@ -131,6 +131,12 @@ const DashboardScreen: React.FC = () => {
 
     fetchQuote();
   }, []);
+
+  const handleRefreshQuote = () => {
+    const currentText = quote?.text;
+    const newQuote = getRandomQuote(currentText);
+    setQuote(newQuote);
+  };
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -353,7 +359,16 @@ const DashboardScreen: React.FC = () => {
       </section>
 
       <section className="px-6 pb-8">
-        <h3 className="text-forest dark:text-white text-lg font-bold leading-tight tracking-tight mb-4">Мудрость дня</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-forest dark:text-white text-lg font-bold leading-tight tracking-tight">Мудрость дня</h3>
+          <button 
+            onClick={handleRefreshQuote}
+            className="flex items-center gap-1 text-xs text-primary hover:text-primary-dark font-medium transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px] animate-none">refresh</span>
+            <span>Другая фраза</span>
+          </button>
+        </div>
         <div className="bg-primary/10 dark:bg-primary/5 rounded-2xl p-4 border border-primary/20">
             <div className="flex gap-4">
                 <span className="material-symbols-outlined text-primary text-3xl">format_quote</span>
