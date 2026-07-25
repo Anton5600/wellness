@@ -46,7 +46,7 @@ async function startServer() {
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "deepseek-chat",
+          model: "deepseek-v4-pro",
           messages: [{ role: "user", content: prompt }]
         }),
       });
