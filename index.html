@@ -52,6 +52,21 @@
         'GRAD' 0,
         'opsz' 24
       }
+      @keyframes gradient-shimmer {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+      .animate-gradient-shimmer {
+        background-size: 200% auto;
+        animation: gradient-shimmer 4s ease infinite;
+      }
     </style>
   <script type="importmap">
 {
