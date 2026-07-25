@@ -340,19 +340,26 @@ const DashboardScreen: React.FC = () => {
                 <p className="text-sage dark:text-[#a0c09d] text-xs text-center mt-2">Метафорическое послание для вас на сегодня</p>
             </div>
         ) : dailyCard && (
-            <div className="bg-white dark:bg-[#1a2d18] rounded-2xl overflow-hidden border border-[#e2e8e1] dark:border-sage/30 shadow-lg relative aspect-[3/4] flex flex-col group">
-                <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${dailyCard.image}")` }}></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10"></div>
-                
-                <div className="absolute top-4 right-4 bg-black/40 backdrop-blur text-white/90 px-3 py-1.5 rounded-full z-20 flex items-center gap-1.5 shadow-sm">
-                  <span className="material-symbols-outlined shrink-0 text-sm">schedule</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Следующая завтра</span>
+            <div className="bg-white dark:bg-[#1a2d18] rounded-2xl overflow-hidden border border-[#e2e8e1] dark:border-sage/30 shadow-lg flex flex-col group">
+                <div className="relative w-full aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-900">
+                    <div 
+                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" 
+                        style={{ backgroundImage: `url("${dailyCard.image}")` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10" />
+                    
+                    <div className="absolute top-4 right-4 bg-black/50 backdrop-blur text-white/90 px-3 py-1.5 rounded-full z-20 flex items-center gap-1.5 shadow-sm">
+                      <span className="material-symbols-outlined shrink-0 text-sm">schedule</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Следующая завтра</span>
+                    </div>
                 </div>
 
-                <div className="relative z-10 flex flex-col h-full justify-end p-6">
-                    <p className="text-white/80 text-sm font-bold uppercase tracking-widest mb-1 drop-shadow-md">Ваша карта</p>
-                    <h4 className="text-white text-3xl font-extrabold mb-2 drop-shadow-lg leading-tight">{dailyCard.title}</h4>
-                    <p className="text-white/90 text-sm font-medium drop-shadow-md border-t border-white/20 pt-3">{dailyCard.message}</p>
+                <div className="p-6 bg-beige-soft/30 dark:bg-black/10 flex flex-col border-t border-[#e2e8e1]/60 dark:border-sage/10">
+                    <p className="text-primary text-xs font-bold uppercase tracking-widest mb-1.5">Ваша карта</p>
+                    <h4 className="text-forest dark:text-white text-2xl font-extrabold mb-2 leading-tight">{dailyCard.title}</h4>
+                    <p className="text-forest/80 dark:text-gray-200 text-sm font-medium leading-relaxed border-t border-primary/10 pt-3">
+                        {dailyCard.message}
+                    </p>
                 </div>
             </div>
         )}
@@ -410,15 +417,21 @@ const DashboardScreen: React.FC = () => {
                             <button 
                                 onClick={handleSynthesis}
                                 disabled={isSynthesizing}
-                                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white py-3 rounded-xl font-bold transition-all disabled:opacity-50"
+                                className={`w-full flex items-center justify-center gap-2 py-4 px-6 rounded-xl font-bold text-white transition-all duration-500 shadow-md ${
+                                    isSynthesizing 
+                                        ? "bg-gradient-to-r from-[#213e19] via-[#4d7d3d] to-[#142910] animate-gradient-shimmer cursor-not-allowed shadow-lg" 
+                                        : "bg-gradient-to-r from-[#3e6831] to-[#608f4c] hover:from-[#2e4f24] hover:to-[#4b733a] active:scale-[0.98] cursor-pointer"
+                                }`}
                             >
                                 {isSynthesizing ? (
-                                    <div className="flex flex-col items-center gap-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                                            <span>Ожидание...</span>
+                                    <div className="flex flex-col items-center gap-1.5 py-1 w-full">
+                                        <div className="flex items-center justify-center gap-2 text-white">
+                                            <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+                                            <span className="text-sm font-extrabold uppercase tracking-wider">Генерируем совет...</span>
                                         </div>
-                                        <span className="text-xs font-normal opacity-90 animate-pulse">{loadingPhrase}</span>
+                                        <span className="text-xs font-semibold text-white/95 px-4 py-1 bg-black/20 rounded-full border border-white/10 animate-pulse text-center">
+                                            {loadingPhrase}
+                                        </span>
                                     </div>
                                 ) : (
                                     <>
