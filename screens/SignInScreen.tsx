@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { myTrackerService } from '../services/myTrackerService';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 60 * 1000; // 1 minute
@@ -79,8 +80,10 @@ const SignInScreen: React.FC = () => {
       setLoading(true);
       if (isSignUp) {
         await signUpWithEmail(email, password, name);
+        myTrackerService.trackRegistration(email, 'email');
       } else {
         await signInWithEmail(email, password);
+        myTrackerService.trackLogin(email, 'email');
       }
       setFailedAttempts(0); // Reset on success
     } catch (error: any) {

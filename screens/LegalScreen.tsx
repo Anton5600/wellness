@@ -1,10 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { privacyPolicyText, termsOfServiceText } from '../data/legal';
+import { myTrackerService } from '../services/myTrackerService';
 
 const LegalScreen: React.FC = () => {
     const navigate = useNavigate();
     const { documentType } = useParams<{ documentType: string }>();
+
+    useEffect(() => {
+        myTrackerService.trackDocumentOpen(documentType || 'unknown');
+    }, [documentType]);
 
     const content = useMemo(() => {
         if (documentType === 'privacy') {

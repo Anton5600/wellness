@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { getUserOils, addUserOil, getOilsCatalog } from '../services/firestoreService';
 import { EmotionSymbol } from '../components/EmotionSymbol';
+import { myTrackerService } from '../services/myTrackerService';
 
 const QuizResultScreen: React.FC = () => {
     const location = useLocation();
@@ -20,6 +21,12 @@ const QuizResultScreen: React.FC = () => {
     const [userOils, setUserOils] = useState<UserOil[]>([]);
     const [oilCatalog, setOilCatalog] = useState<OilCatalogItem[]>([]);
     const [addingOilIds, setAddingOilIds] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (result && !fromHistory) {
+            myTrackerService.trackQuizComplete(result.name, result.oils);
+        }
+    }, [result, fromHistory]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -190,6 +197,7 @@ const QuizResultScreen: React.FC = () => {
                                             <button 
                                                 onClick={() => {
                                                     addToCart(catalogOil.id);
+                                                    myTrackerService.trackAddToCart(catalogOil.id, catalogOil.name, catalogOil.price || 0);
                                                     navigate('/cart');
                                                 }}
                                                 className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
