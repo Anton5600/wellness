@@ -53,6 +53,29 @@ const BackButtonHandler: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  useEffect(() => {
+    // Initialize Capgo OTA updates on startup
+    import('./services/capgoUpdate').then(({ initializeCapgoUpdate }) => {
+      initializeCapgoUpdate().catch(err => {
+        console.error('[CapgoUpdate] Failed to initialize:', err);
+      });
+    });
+
+    // Run the RuStore update check on mount
+    import('./services/ruStoreUpdate').then(({ checkAndPromptRuStoreUpdate }) => {
+      checkAndPromptRuStoreUpdate().catch(err => {
+        console.error('[RuStoreUpdate] Global error:', err);
+      });
+    });
+
+    // Initialize MyTracker analytics service on app startup
+    import('./services/myTrackerService').then(({ myTrackerService }) => {
+      myTrackerService.init();
+    }).catch(err => {
+      console.error('[MyTracker] Failed to initialize:', err);
+    });
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>

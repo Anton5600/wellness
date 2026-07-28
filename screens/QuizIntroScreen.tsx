@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { myTrackerService } from '../services/myTrackerService';
 
 const QuizIntroScreen: React.FC = () => {
     const navigate = useNavigate();
@@ -12,6 +13,11 @@ const QuizIntroScreen: React.FC = () => {
         { name: 'Анализ', icon: 'analytics' },
         { name: 'Результат', icon: 'verified' },
     ];
+
+    const handleStartQuiz = () => {
+        myTrackerService.trackQuizStart();
+        navigate('/quiz');
+    };
 
     return (
         <div className="relative flex h-[100dvh] w-full flex-col bg-beige-soft dark:bg-background-dark">
@@ -58,7 +64,7 @@ const QuizIntroScreen: React.FC = () => {
             </main>
 
             <footer className="absolute bottom-0 left-0 w-full p-6 pb-[calc(10vh+env(safe-area-inset-bottom))] bg-gradient-to-t from-beige-soft dark:from-background-dark via-beige-soft dark:via-background-dark to-transparent">
-                <button onClick={() => navigate('/quiz')} className="w-full bg-primary hover:bg-primary/90 text-forest font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-transform active:scale-[0.98]">
+                <button onClick={handleStartQuiz} className="w-full bg-primary hover:bg-primary/90 text-forest font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-transform active:scale-[0.98]">
                     Продолжить
                 </button>
             </footer>

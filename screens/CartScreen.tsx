@@ -7,6 +7,7 @@ import { OilCatalogItem, Order } from '../types';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { TELEGRAM_USERNAME } from '../constants';
+import { myTrackerService } from '../services/myTrackerService';
 
 const CartScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -60,7 +61,10 @@ const CartScreen: React.FC = () => {
         deliveryAddress: address,
       };
 
-      await addDoc(collection(db, 'orders'), newOrder);
+      const docRef = await addDoc(collection(db, 'orders'), newOrder);
+      
+      // Track purchase in MyTracker
+      myTrackerService.trackPurchase(docRef.id, totalAmount, cartCount);
       
       clearCart();
       alert("Ваш заказ успешно оформлен! Мы свяжемся с вами в ближайшее время.");
@@ -168,6 +172,10 @@ const CartScreen: React.FC = () => {
                             const oil = getOilStatus(item.oilId);
                             return oil ? `- ${oil.name} (${item.quantity} шт.)` : '';
                         }).join('%0A');
+                        
+                        // Track Telegram purchase in MyTracker
+                        myTrackerService.trackPurchase('tg_' + Date.now(), Math.round(totalAmount * 0.75), cartCount);
+                        
                         window.open(`https://t.me/${TELEGRAM_USERNAME}?text=Здравствуйте! Хочу оформить заказ со скидкой 25%:%0A${itemsText}`, '_blank');
                     }}
                     className="w-full bg-indigo-500 text-white font-bold py-4 rounded-xl text-md shadow-lg shadow-indigo-500/30 hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2"
