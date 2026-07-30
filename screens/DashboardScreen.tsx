@@ -102,34 +102,10 @@ const DashboardScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    const fetchQuote = async () => {
-      try {
-        // Используем прокси allorigins для обхода CORS и блокировки HTTP (Mixed Content)
-        const targetUrl = encodeURIComponent('http://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=ru');
-        const response = await fetch(`https://api.allorigins.win/get?url=${targetUrl}`);
-        if (!response.ok) throw new Error('Network error');
-        const data = await response.json();
-        
-        // Forismatic иногда возвращает некорректный JSON (например, с неэкранированными кавычками)
-        const cleanJson = data.contents.replace(/\\'/g, "'");
-        const parsedData = JSON.parse(cleanJson);
-        
-        setQuote({
-          text: parsedData.quoteText,
-          author: parsedData.quoteAuthor || 'Неизвестный автор'
-        });
-      } catch (error) {
-        console.error("Ошибка при загрузке цитаты:", error);
-        // Резервная цитата дня из нашей локальной базы на случай, если API недоступно
-        if (!quote) {
-          setQuote(getQuoteForDay());
-        }
-      } finally {
-        setQuoteLoading(false);
-      }
-    };
-
-    fetchQuote();
+    if (!quote) {
+      setQuote(getQuoteForDay());
+    }
+    setQuoteLoading(false);
   }, []);
 
   const handleRefreshQuote = () => {
@@ -140,10 +116,14 @@ const DashboardScreen: React.FC = () => {
 
   useEffect(() => {
     const fetchHistory = async () => {
-      if (user) {
-        setLoading(true);
-        const userHistory = await getEmotionHistory(user.uid);
+      setLoading(true);
+      try {
+        const userId = user?.uid || 'guest';
+        const userHistory = await getEmotionHistory(userId);
         setHistory(userHistory);
+      } catch (error) {
+        console.error("Failed to load history:", error);
+      } finally {
         setLoading(false);
       }
     };

@@ -21,6 +21,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithVK: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -36,6 +37,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if user authenticated via VK OAuth redirect
+    const savedVkUser = localStorage.getItem('vk_auth_user');
+    if (savedVkUser) {
+      try {
+        const parsed = JSON.parse(savedVkUser);
+        if (parsed && parsed.uid) {
+          setUser({
+            uid: parsed.uid,
+            email: parsed.email || 'VK User',
+            name: parsed.name || 'Пользователь VK',
+            emailVerified: true,
+          });
+        }
+      } catch (e) {
+        console.error("Error parsing saved VK user", e);
+      }
+    }
+
+    // Listen for postMessage from VK auth popup
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'VK_AUTH_SUCCESS' && event.data.user) {
+        const vkUser = event.data.user;
+        const appUser: User = {
+          uid: vkUser.uid,
+          email: vkUser.email || 'VK User',
+          name: vkUser.name || 'Пользователь VK',
+          emailVerified: true,
+        };
+        localStorage.setItem('vk_auth_user', JSON.stringify(vkUser));
+        setUser(appUser);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         const appUser: User = {
@@ -45,14 +80,45 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           emailVerified: firebaseUser.emailVerified,
         };
         setUser(appUser);
-      } else {
+        localStorage.removeItem('vk_auth_user'); // Clear local VK override if Firebase user exists
+      } else if (!localStorage.getItem('vk_auth_user')) {
         setUser(null);
       }
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
+
+  const signInWithVK = async () => {
+    try {
+      const res = await fetch('/api/auth/vk/url');
+      const data = await res.json();
+      if (data.url) {
+        // Open popup for VK authentication
+        const width = 600;
+        const height = 650;
+        const left = (window.innerWidth - width) / 2;
+        const top = (window.innerHeight - height) / 2;
+        const popup = window.open(
+          data.url,
+          'vk_auth',
+          `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,status=yes`
+        );
+
+        if (!popup) {
+          // If popup is blocked by browser, redirect current page
+          window.location.href = data.url;
+        }
+      }
+    } catch (e) {
+      console.error("Error initiating VK sign in:", e);
+      throw e;
+    }
+  };
 
   const reloadUser = async () => {
     if (auth.currentUser) {
@@ -95,7 +161,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const signOut = async () => {
-    await firebaseSignOut(auth);
+    localStorage.removeItem('vk_auth_user');
+    setUser(null);
+    try {
+      await firebaseSignOut(auth);
+    } catch (e) {
+      console.warn("Sign out warning:", e);
+    }
   };
 
   const resetPassword = async (email: string) => {
@@ -103,15 +175,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const deleteAccount = async () => {
+    localStorage.removeItem('vk_auth_user');
     if (auth.currentUser) {
       await deleteAllUserData(auth.currentUser.uid);
       await deleteUser(auth.currentUser);
-      setUser(null);
     }
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, deleteAccount, reloadUser, resetPassword }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithVK, signInWithEmail, signUpWithEmail, signOut, deleteAccount, reloadUser, resetPassword }}>
       {!loading && children}
     </AuthContext.Provider>
   );

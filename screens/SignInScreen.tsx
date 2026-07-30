@@ -8,7 +8,7 @@ const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 60 * 1000; // 1 minute
 
 const SignInScreen: React.FC = () => {
-  const { signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
+  const { signInWithEmail, signUpWithEmail, resetPassword, signInWithVK } = useAuth();
   const navigate = useNavigate();
   
   const [isSignUp, setIsSignUp] = useState(false);
@@ -56,6 +56,20 @@ const SignInScreen: React.FC = () => {
     }
     return () => clearInterval(interval);
   }, [lockoutUntil]);
+
+  const handleVkAuth = async () => {
+    try {
+      setError('');
+      setLoading(true);
+      await signInWithVK();
+      myTrackerService.trackLogin('vk_user', 'vk');
+      setLoading(false);
+    } catch (err: any) {
+      console.error("VK Auth error:", err);
+      setError('Не удалось войти через VK ID. Проверьте подключение.');
+      setLoading(false);
+    }
+  };
 
   const handleFailedAttempt = () => {
     const newAttempts = failedAttempts + 1;
@@ -234,6 +248,28 @@ const SignInScreen: React.FC = () => {
                 ? `Подождите ${lockoutRemaining} сек.` 
                 : (loading ? 'Загрузка...' : (isForgotPassword ? 'Отправить ссылку' : (isSignUp ? 'Зарегистрироваться' : 'Войти')))}
             </button>
+            {!isForgotPassword && (
+              <>
+                <div className="relative flex items-center justify-center my-2">
+                  <div className="border-t border-sage/20 w-full"></div>
+                  <span className="bg-background-light dark:bg-background-dark px-3 text-xs text-sage font-medium uppercase tracking-wider">или</span>
+                  <div className="border-t border-sage/20 w-full"></div>
+                </div>
+
+                <button 
+                  type="button"
+                  onClick={handleVkAuth}
+                  disabled={loading || !!lockoutUntil}
+                  className="w-full bg-[#0077FF] hover:bg-[#0066EE] text-white font-semibold py-3.5 px-4 rounded-xl flex items-center justify-center gap-3 shadow-md shadow-[#0077FF]/20 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-6 h-6 fill-current shrink-0" viewBox="0 0 24 24">
+                    <path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.408 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.862-.525-2.05-1.713-1.033-1.01-1.49-1.136-1.744-1.136-.356 0-.458.102-.458.585v1.652c0 .432-.136.686-1.288.686-1.898 0-4.008-1.152-5.492-3.297-2.229-3.152-2.83-5.525-2.83-6.008 0-.254.102-.492.593-.492h1.746c.44 0 .61.203.78.686.856 2.483 2.28 4.653 2.873 4.653.22 0 .322-.102.322-.66V9.722c-.085-1.186-.695-1.288-.695-1.712 0-.203.17-.407.44-.407h2.746c.373 0 .508.203.508.66v3.559c0 .39.17.525.288.525.22 0 .407-.136.814-.543 1.254-1.406 2.152-3.576 2.152-3.576.119-.254.322-.492.763-.492h1.746c.525 0 .635.27.525.66-.22.992-2.297 3.966-2.297 3.966-.186.288-.254.424 0 .763.17.237.746.729 1.136 1.186.712.814 1.254 1.492 1.398 1.958.153.441-.084.687-.525.687z"/>
+                  </svg>
+                  <span>Войти с VK ID</span>
+                </button>
+              </>
+            )}
+
             <p className="text-xs text-center text-sage dark:text-gray-400 mt-2 px-4 leading-relaxed">
               Продолжая, вы соглашаетесь с{' '}
               <button type="button" onClick={() => navigate('/legal/terms')} className="underline hover:text-primary">Пользовательским соглашением</button>{' '}

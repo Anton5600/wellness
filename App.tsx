@@ -26,6 +26,7 @@ import AdminCardsScreen from './screens/AdminCardsScreen';
 import CartScreen from './screens/CartScreen';
 import SymbolsDictionaryScreen from './screens/SymbolsDictionaryScreen';
 import LegalScreen from './screens/LegalScreen';
+import { myTrackerService } from './services/myTrackerService';
 
 const BackButtonHandler: React.FC = () => {
   const navigate = useNavigate();
@@ -69,11 +70,11 @@ const App: React.FC = () => {
     });
 
     // Initialize MyTracker analytics service on app startup
-    import('./services/myTrackerService').then(({ myTrackerService }) => {
+    try {
       myTrackerService.init();
-    }).catch(err => {
+    } catch (err) {
       console.error('[MyTracker] Failed to initialize:', err);
-    });
+    }
   }, []);
 
   return (
