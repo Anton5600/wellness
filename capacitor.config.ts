@@ -11,6 +11,9 @@ const config: CapacitorConfig = {
     CapacitorUpdater: {
       autoUpdate: false,
       statsUrl: "https://capgo.app/api/stats"
+    },
+    CapacitorHttp: {
+      enabled: true
     }
   }
 };

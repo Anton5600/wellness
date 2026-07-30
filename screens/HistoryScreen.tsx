@@ -15,10 +15,14 @@ const HistoryScreen: React.FC = () => {
 
     useEffect(() => {
         const fetchHistory = async () => {
-            if (user) {
-                setLoading(true);
-                const userHistory = await getEmotionHistory(user.uid);
+            setLoading(true);
+            try {
+                const userId = user?.uid || 'guest';
+                const userHistory = await getEmotionHistory(userId);
                 setHistory(userHistory);
+            } catch (error) {
+                console.error("Failed to load history:", error);
+            } finally {
                 setLoading(false);
             }
         };

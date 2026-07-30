@@ -8,8 +8,93 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(cors());
+  app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  }));
   app.use(express.json());
+
+  // Health check route
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
+
+  // VK OAuth Routes
+  const VK_APP_ID = process.env.VK_APP_ID || "54700577";
+  const VK_CLIENT_SECRET = process.env.VK_CLIENT_SECRET || "";
+
+  app.get("/api/auth/vk/url", (req, res) => {
+    const redirectUri = req.query.redirect_uri as string || "https://wellness-t3q6.onrender.com/api/auth/vk/callback";
+    const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&v=5.131`;
+    res.json({ url: vkAuthUrl });
+  });
+
+  app.get("/api/auth/vk/callback", async (req, res) => {
+    try {
+      const { code } = req.query;
+      if (!code) {
+        return res.status(400).send("Authorization code missing");
+      }
+
+      const host = req.get("host") || "wellness-t3q6.onrender.com";
+      const protocol = req.protocol === "https" || host.includes("onrender.com") ? "https" : "http";
+      const redirectUri = `${protocol}://${host}/api/auth/vk/callback`;
+
+      // 1. Exchange code for access token
+      const tokenUrl = `https://oauth.vk.com/access_token?client_id=${VK_APP_ID}&client_secret=${VK_CLIENT_SECRET}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`;
+      const tokenRes = await fetch(tokenUrl);
+      const tokenData = await tokenRes.json();
+
+      if (tokenData.error) {
+        console.error("VK OAuth token error:", tokenData);
+        return res.status(400).send(`VK OAuth Error: ${tokenData.error_description || tokenData.error}`);
+      }
+
+      const { access_token, user_id, email } = tokenData;
+
+      // 2. Get VK user details
+      const userUrl = `https://api.vk.com/method/users.get?user_ids=${user_id}&fields=photo_200&access_token=${access_token}&v=5.131`;
+      const userRes = await fetch(userUrl);
+      const userData = await userRes.json();
+      const vkUser = userData.response?.[0] || {};
+
+      const userEmail = email || `vk_${user_id}@vk.com`;
+      const userName = `${vkUser.first_name || 'Пользователь'} ${vkUser.last_name || 'VK'}`.trim();
+
+      // Return script to pass user info back to window.opener or redirect
+      const userPayload = JSON.stringify({
+        uid: `vk:${user_id}`,
+        email: userEmail,
+        name: userName,
+        provider: 'vk',
+        vkUserId: user_id
+      });
+
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>VK Auth</title></head>
+          <body>
+            <p>Авторизация через VK выполнена успешно. Перенаправление...</p>
+            <script>
+              const userData = ${userPayload};
+              if (window.opener) {
+                window.opener.postMessage({ type: 'VK_AUTH_SUCCESS', user: userData }, '*');
+                window.close();
+              } else {
+                localStorage.setItem('vk_auth_user', JSON.stringify(userData));
+                window.location.href = '/';
+              }
+            </script>
+          </body>
+        </html>
+      `);
+    } catch (err: any) {
+      console.error("VK Callback Error:", err);
+      res.status(500).send("Ошибка при входе через VK: " + (err?.message || "Unknown error"));
+    }
+  });
 
   // API Routes
   app.post("/api/ai/synthesis", async (req, res) => {

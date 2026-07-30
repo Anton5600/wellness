@@ -31,16 +31,14 @@ const QuizQuestionScreen: React.FC = () => {
             setCurrentStep(currentStep + 1);
             setSelectedAnswer(null);
         } else {
-            if (user) {
-                const result = calculateResult(newAnswers);
-                try {
-                    await saveEmotionHistory(user.uid, result.key);
-                } catch (error) {
-                    console.error("Ошибка при сохранении истории в Firebase:", error);
-                    // Мы не прерываем выполнение, чтобы пользователь все равно увидел результат
-                }
-                navigate('/result', { state: { result } });
+            const result = calculateResult(newAnswers);
+            try {
+                const userId = user?.uid || 'guest';
+                await saveEmotionHistory(userId, result.key);
+            } catch (error) {
+                console.error("Ошибка при сохранении истории:", error);
             }
+            navigate('/result', { state: { result } });
         }
     };
 

@@ -6,6 +6,8 @@ import { EmotionHistoryEntry, EmotionKey } from '../types';
 import { getEmotionHistory } from '../services/firestoreService';
 import { EMOTIONS } from '../constants';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const ProgressScreen: React.FC = () => {
     const { user } = useAuth();
@@ -18,11 +20,15 @@ const ProgressScreen: React.FC = () => {
 
     useEffect(() => {
         const fetchHistory = async () => {
-            if (user) {
-                setLoading(true);
+            setLoading(true);
+            try {
+                const userId = user?.uid || 'guest';
                 // Получаем историю и сортируем от старых к новым для правильного отображения линии
-                const userHistory = (await getEmotionHistory(user.uid)).reverse();
+                const userHistory = (await getEmotionHistory(userId)).reverse();
                 setHistory(userHistory);
+            } catch (error) {
+                console.error("Failed to load history:", error);
+            } finally {
                 setLoading(false);
             }
         };
@@ -95,9 +101,6 @@ const ProgressScreen: React.FC = () => {
         if (!chartRef.current) return;
         try {
             setExporting(true);
-            const html2canvasModule = await import('html2canvas');
-            const html2canvas = html2canvasModule.default ? html2canvasModule.default : html2canvasModule;
-            const { jsPDF } = await import('jspdf');
 
             const canvas = await html2canvas(chartRef.current, { scale: 2, backgroundColor: null });
             const imgData = canvas.toDataURL('image/png');
