@@ -16,9 +16,6 @@ import {
 import { auth } from '../firebaseConfig'; 
 import { User } from '../types';
 import { deleteAllUserData } from '../services/firestoreService';
-import { Browser } from '@capacitor/browser';
-import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
 
 interface AuthContextType {
   user: User | null;
@@ -74,32 +71,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     window.addEventListener('message', handleMessage);
 
-    // Listen for mobile deep link appUrlOpen (for VK OAuth in Capacitor)
-    const handleAppUrlOpen = async (event: { url: string }) => {
-      if (event.url && event.url.includes('wellness://auth')) {
-        try {
-          const urlObj = new URL(event.url);
-          const dataParam = urlObj.searchParams.get('data');
-          if (dataParam) {
-            const vkUser = JSON.parse(decodeURIComponent(dataParam));
-            const appUser: User = {
-              uid: vkUser.uid,
-              email: vkUser.email || 'VK User',
-              name: vkUser.name || 'Пользователь VK',
-              emailVerified: true,
-            };
-            localStorage.setItem('vk_auth_user', JSON.stringify(vkUser));
-            setUser(appUser);
-            await Browser.close().catch(() => {});
-          }
-        } catch (e) {
-          console.error("Error handling deep link auth", e);
-        }
-      }
-    };
-
-    const appUrlListener = App.addListener('appUrlOpen', handleAppUrlOpen);
-
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         const appUser: User = {
@@ -119,49 +90,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       unsubscribe();
       window.removeEventListener('message', handleMessage);
-      appUrlListener.then(listener => listener.remove()).catch(() => {});
     };
   }, []);
 
   const signInWithVK = async () => {
-    let authUrl = '';
     try {
-      const apiUrl = 'https://wellness-t3q6.onrender.com/api/auth/vk/url';
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(apiUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
+      const res = await fetch('/api/auth/vk/url');
       const data = await res.json();
       if (data.url) {
-        authUrl = data.url;
-      }
-    } catch (e) {
-      console.warn("Could not fetch VK auth URL from backend, using direct fallback:", e);
-    }
-
-    if (!authUrl) {
-      const redirectUri = 'https://wellness-t3q6.onrender.com/api/auth/vk/callback';
-      authUrl = `https://oauth.vk.com/authorize?client_id=54700577&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&v=5.131`;
-    }
-
-    try {
-      if (Capacitor.isNativePlatform()) {
-        await Browser.open({ url: authUrl });
-      } else {
         // Open popup for VK authentication
         const width = 600;
         const height = 650;
         const left = (window.innerWidth - width) / 2;
         const top = (window.innerHeight - height) / 2;
         const popup = window.open(
-          authUrl,
+          data.url,
           'vk_auth',
           `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,status=yes`
         );
 
         if (!popup) {
           // If popup is blocked by browser, redirect current page
-          window.location.href = authUrl;
+          window.location.href = data.url;
         }
       }
     } catch (e) {
