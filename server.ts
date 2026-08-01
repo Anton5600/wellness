@@ -28,7 +28,7 @@ async function startServer() {
     const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
     const proto = req.get("x-forwarded-proto") || (host.includes("onrender.com") ? "https" : req.protocol);
     const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
-    const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&v=5.131`;
+    const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&display=mobile&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&v=5.131`;
     res.json({ url: vkAuthUrl });
   });
 
