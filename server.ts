@@ -28,15 +28,121 @@ async function startServer() {
     const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
     const proto = req.get("x-forwarded-proto") || (host.includes("onrender.com") ? "https" : req.protocol);
     const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
-    const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&display=mobile&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&v=5.131`;
+    const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=token&v=5.131`;
     res.json({ url: vkAuthUrl });
+  });
+
+  app.post("/api/auth/vk/token-login", async (req, res) => {
+    try {
+      const { access_token, user_id, email } = req.body;
+      if (!access_token || !user_id) {
+        return res.status(400).json({ error: "Missing access_token or user_id" });
+      }
+      const userUrl = `https://api.vk.com/method/users.get?user_ids=${user_id}&fields=photo_200&access_token=${access_token}&v=5.131`;
+      const userRes = await fetch(userUrl);
+      const userData = await userRes.json();
+      const vkUser = userData.response?.[0] || {};
+
+      const userEmail = email || `vk_${user_id}@vk.com`;
+      const userName = `${vkUser.first_name || 'Пользователь'} ${vkUser.last_name || 'VK'}`.trim();
+
+      const userPayload = {
+        uid: `vk:${user_id}`,
+        email: userEmail,
+        name: userName,
+        provider: 'vk',
+        vkUserId: user_id
+      };
+      res.json(userPayload);
+    } catch (err: any) {
+      console.error("VK token-login error:", err);
+      res.status(500).json({ error: "Failed to fetch VK profile" });
+    }
   });
 
   app.get("/api/auth/vk/callback", async (req, res) => {
     try {
       const { code } = req.query;
       if (!code) {
-        return res.status(400).send("Authorization code missing");
+        // Поддержка Implicit Flow (response_type=token), где параметры приходят в URL hash (#access_token=...)
+        return res.send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>VK Auth</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <style>
+                body { font-family: system-ui, sans-serif; text-align: center; padding: 40px; background: #f5f5f7; color: #1d1d1f; }
+                .btn { display: inline-block; background: #0077FF; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 20px; }
+              </style>
+            </head>
+            <body>
+              <h2 id="title">Авторизация через VK...</h2>
+              <p id="status">Обработка данных авторизации</p>
+              <a id="btn" class="btn" style="display:none;" href="#">Открыть приложение</a>
+              <script>
+                (function() {
+                  const hash = window.location.hash.substring(1);
+                  const params = new URLSearchParams(hash || window.location.search);
+                  
+                  if (params.get('error')) {
+                    document.getElementById('title').innerText = 'Ошибка авторизации VK';
+                    document.getElementById('status').innerText = (params.get('error_description') || params.get('error'));
+                    return;
+                  }
+
+                  const accessToken = params.get('access_token');
+                  const userId = params.get('user_id');
+                  const email = params.get('email') || '';
+
+                  if (!accessToken || !userId) {
+                    document.getElementById('title').innerText = 'Ошибка авторизации';
+                    document.getElementById('status').innerText = 'Токен доступа не найден. Попробуйте снова.';
+                    return;
+                  }
+
+                  fetch('/api/auth/vk/token-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ access_token: accessToken, user_id: userId, email: email })
+                  })
+                  .then(r => r.json())
+                  .then(userData => {
+                    if (userData.error) {
+                      document.getElementById('title').innerText = 'Ошибка профиля';
+                      document.getElementById('status').innerText = userData.error;
+                      return;
+                    }
+
+                    document.getElementById('title').innerText = 'Авторизация через VK успешна!';
+                    document.getElementById('status').innerText = 'Возвращаем вас в приложение...';
+                    
+                    const deepLinkUrl = "wellness://auth?data=" + encodeURIComponent(JSON.stringify(userData));
+                    const btn = document.getElementById('btn');
+                    btn.href = deepLinkUrl;
+                    btn.style.display = 'inline-block';
+
+                    if (window.opener) {
+                      window.opener.postMessage({ type: 'VK_AUTH_SUCCESS', user: userData }, '*');
+                      setTimeout(() => window.close(), 500);
+                    } else {
+                      localStorage.setItem('vk_auth_user', JSON.stringify(userData));
+                      window.location.href = deepLinkUrl;
+                      setTimeout(() => {
+                        window.location.href = '/';
+                      }, 1500);
+                    }
+                  })
+                  .catch(err => {
+                    document.getElementById('title').innerText = 'Ошибка соединения';
+                    document.getElementById('status').innerText = err.message;
+                  });
+                })();
+              </script>
+            </body>
+          </html>
+        `);
       }
 
       const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
