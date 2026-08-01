@@ -25,9 +25,7 @@ async function startServer() {
   const VK_CLIENT_SECRET = process.env.VK_CLIENT_SECRET || "";
 
   app.get("/api/auth/vk/url", (req, res) => {
-    const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
-    const proto = req.get("x-forwarded-proto") || (host.includes("onrender.com") ? "https" : req.protocol);
-    const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
+    const redirectUri = req.query.redirect_uri as string || "https://wellness-t3q6.onrender.com/api/auth/vk/callback";
     const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&v=5.131`;
     res.json({ url: vkAuthUrl });
   });
@@ -39,9 +37,9 @@ async function startServer() {
         return res.status(400).send("Authorization code missing");
       }
 
-      const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
-      const proto = req.get("x-forwarded-proto") || (host.includes("onrender.com") ? "https" : req.protocol);
-      const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
+      const host = req.get("host") || "wellness-t3q6.onrender.com";
+      const protocol = req.protocol === "https" || host.includes("onrender.com") ? "https" : "http";
+      const redirectUri = `${protocol}://${host}/api/auth/vk/callback`;
 
       // 1. Exchange code for access token
       const tokenUrl = `https://oauth.vk.com/access_token?client_id=${VK_APP_ID}&client_secret=${VK_CLIENT_SECRET}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`;
@@ -76,32 +74,17 @@ async function startServer() {
       res.send(`
         <!DOCTYPE html>
         <html>
-          <head>
-            <meta charset="utf-8">
-            <title>VK Auth</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-              body { font-family: system-ui, sans-serif; text-align: center; padding: 40px; background: #f5f5f7; color: #1d1d1f; }
-              .btn { display: inline-block; background: #0077FF; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 20px; }
-            </style>
-          </head>
+          <head><title>VK Auth</title></head>
           <body>
-            <h2>Авторизация через VK успешна!</h2>
-            <p>Возвращаем вас в приложение...</p>
-            <a class="btn" href="wellness://auth?data=${encodeURIComponent(userPayload)}">Открыть приложение</a>
+            <p>Авторизация через VK выполнена успешно. Перенаправление...</p>
             <script>
               const userData = ${userPayload};
-              const deepLinkUrl = "wellness://auth?data=" + encodeURIComponent(JSON.stringify(userData));
-              
               if (window.opener) {
                 window.opener.postMessage({ type: 'VK_AUTH_SUCCESS', user: userData }, '*');
                 window.close();
               } else {
                 localStorage.setItem('vk_auth_user', JSON.stringify(userData));
-                window.location.href = deepLinkUrl;
-                setTimeout(() => {
-                  window.location.href = '/';
-                }, 1500);
+                window.location.href = '/';
               }
             </script>
           </body>
