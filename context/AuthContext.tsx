@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (!authUrl) {
       const redirectUri = 'https://wellness-t3q6.onrender.com/api/auth/vk/callback';
-      authUrl = `https://oauth.vk.com/authorize?client_id=54700577&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=token&v=5.131`;
+      authUrl = `https://id.vk.com/authorize?client_id=54700577&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email`;
     }
 
     try {
