@@ -85,16 +85,16 @@ const SignInScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [lockoutUntil]);
 
-  const handleVkAuth = async () => {
+  const handleVkAuth = async (useLegacy = false) => {
     try {
       setError('');
       setLoading(true);
-      await signInWithVK();
+      await signInWithVK(useLegacy);
       myTrackerService.trackLogin('vk_user', 'vk');
       setLoading(false);
     } catch (err: any) {
       console.error("VK Auth error:", err);
-      setError('Не удалось войти через VK ID. Проверьте подключение.');
+      setError('Не удалось войти через VK. Проверьте подключение.');
       setLoading(false);
     }
   };
@@ -286,7 +286,7 @@ const SignInScreen: React.FC = () => {
 
                 <button 
                   type="button"
-                  onClick={handleVkAuth}
+                  onClick={() => handleVkAuth(false)}
                   disabled={loading || !!lockoutUntil}
                   className="w-full bg-[#0077FF] hover:bg-[#0066EE] text-white font-semibold py-3.5 px-4 rounded-xl flex items-center justify-center gap-3 shadow-md shadow-[#0077FF]/20 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 >
@@ -294,6 +294,16 @@ const SignInScreen: React.FC = () => {
                     <path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.408 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.862-.525-2.05-1.713-1.033-1.01-1.49-1.136-1.744-1.136-.356 0-.458.102-.458.585v1.652c0 .432-.136.686-1.288.686-1.898 0-4.008-1.152-5.492-3.297-2.229-3.152-2.83-5.525-2.83-6.008 0-.254.102-.492.593-.492h1.746c.44 0 .61.203.78.686.856 2.483 2.28 4.653 2.873 4.653.22 0 .322-.102.322-.66V9.722c-.085-1.186-.695-1.288-.695-1.712 0-.203.17-.407.44-.407h2.746c.373 0 .508.203.508.66v3.559c0 .39.17.525.288.525.22 0 .407-.136.814-.543 1.254-1.406 2.152-3.576 2.152-3.576.119-.254.322-.492.763-.492h1.746c.525 0 .635.27.525.66-.22.992-2.297 3.966-2.297 3.966-.186.288-.254.424 0 .763.17.237.746.729 1.136 1.186.712.814 1.254 1.492 1.398 1.958.153.441-.084.687-.525.687z"/>
                   </svg>
                   <span>Войти с VK ID</span>
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => handleVkAuth(true)}
+                  disabled={loading || !!lockoutUntil}
+                  className="w-full bg-transparent hover:bg-sage/5 dark:hover:bg-white/5 text-sage dark:text-gray-300 hover:text-[#0077FF] dark:hover:text-primary font-semibold py-2.5 px-4 rounded-xl border border-sage/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed text-xs"
+                >
+                  <span className="material-symbols-outlined text-[16px] shrink-0">history</span>
+                  <span>Совместимый вход (Classic VK OAuth)</span>
                 </button>
 
                 {/* VK ID Helper Instructions */}
@@ -311,7 +321,18 @@ const SignInScreen: React.FC = () => {
 
                   {showVkHelp && (
                     <div className="mt-3 bg-sage/5 dark:bg-white/5 rounded-xl p-4 border border-sage/15 text-xs text-forest dark:text-gray-200 space-y-3 leading-relaxed">
-                      <p className="font-semibold text-primary">Инструкция по настройке приложения VK ID:</p>
+                      <p className="font-semibold text-primary">Инструкция по настройке и обходу ошибок VK ID:</p>
+                      
+                      <div className="bg-[#0077FF]/10 text-[#0077FF] dark:text-blue-300 p-3 rounded-lg border border-[#0077FF]/20 text-[11px] mb-2 space-y-1">
+                        <p className="font-bold">⚠️ Проблема «Вход заблокирован сайтом»:</p>
+                        <p>Новая система VK ID (кнопка «Войти с VK ID») блокирует публичные облачные домены (такие как <strong>*.run.app</strong> и <strong>*.onrender.com</strong>) из соображений защиты от фишинга.</p>
+                        <p className="font-semibold mt-1">Решения:</p>
+                        <ol className="list-decimal pl-4 space-y-0.5">
+                          <li>Используйте кнопку <strong>«Classic VK OAuth»</strong> — этот классический шлюз авторизации не накладывает жестких ограничений на имя домена.</li>
+                          <li>Или подключите к вашему приложению собственный домен второго уровня (например, <i>mysite.ru</i>) и верифицируйте его в кабинете VK.</li>
+                        </ol>
+                      </div>
+
                       <ol className="list-decimal pl-4 space-y-1.5 text-[11px] text-sage dark:text-gray-300">
                         <li>Перейдите в кабинет VK ID для бизнеса: <a href="https://id.vk.ru/about/business/go" target="_blank" rel="noopener noreferrer" className="underline text-[#0077FF]">id.vk.ru/about/business/go</a></li>
                         <li>Выберите ваше приложение (или создайте новое типа «Web-сайт»).</li>

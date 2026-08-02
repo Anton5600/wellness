@@ -40,11 +40,17 @@ async function startServer() {
     const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
     const state = Math.random().toString(36).substring(2, 15);
-    const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    
-    // VK ID uses id.vk.com/auth with scope, state, uuid, client_id, and redirect_uri
-    const vkAuthUrl = `https://id.vk.com/auth?client_id=${VK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email&state=${state}&uuid=${uuid}`;
-    res.json({ url: vkAuthUrl });
+    const useLegacy = req.query.legacy === "true";
+
+    if (useLegacy) {
+      const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&v=5.131&state=${state}`;
+      res.json({ url: vkAuthUrl });
+    } else {
+      const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      // VK ID uses id.vk.com/auth with scope, state, uuid, client_id, and redirect_uri
+      const vkAuthUrl = `https://id.vk.com/auth?client_id=${VK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email&state=${state}&uuid=${uuid}`;
+      res.json({ url: vkAuthUrl });
+    }
   });
 
   app.post("/api/auth/vk/token-login", async (req, res) => {
