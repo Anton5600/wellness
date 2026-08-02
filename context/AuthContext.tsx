@@ -24,7 +24,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
-  signInWithVK: () => Promise<void>;
+  signInWithVK: (useLegacy?: boolean) => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -123,11 +123,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const signInWithVK = async () => {
+  const signInWithVK = async (useLegacy?: boolean) => {
     let authUrl = '';
     try {
       const apiOrigin = window.location.origin;
-      const apiUrl = `${apiOrigin}/api/auth/vk/url`;
+      const apiUrl = `${apiOrigin}/api/auth/vk/url${useLegacy ? '?legacy=true' : ''}`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       const res = await fetch(apiUrl, { signal: controller.signal });
@@ -145,8 +145,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const redirectUri = `${apiOrigin}/api/auth/vk/callback`;
       const appId = import.meta.env.VITE_VK_APP_ID || "54700577";
       const state = Math.random().toString(36).substring(2, 15);
-      const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      authUrl = `https://id.vk.com/auth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email&state=${state}&uuid=${uuid}`;
+      if (useLegacy) {
+        authUrl = `https://oauth.vk.com/authorize?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&v=5.131&state=${state}`;
+      } else {
+        const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        authUrl = `https://id.vk.com/auth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email&state=${state}&uuid=${uuid}`;
+      }
     }
 
     try {
