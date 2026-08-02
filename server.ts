@@ -24,11 +24,26 @@ async function startServer() {
   const VK_APP_ID = process.env.VK_APP_ID || "54700577";
   const VK_CLIENT_SECRET = process.env.VK_CLIENT_SECRET || "";
 
+  app.get("/api/auth/vk/config", (req, res) => {
+    const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
+    const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+    const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
+    res.json({
+      appId: VK_APP_ID,
+      redirectUri: redirectUri,
+      isConfigured: VK_APP_ID !== "54700577" && VK_CLIENT_SECRET !== ""
+    });
+  });
+
   app.get("/api/auth/vk/url", (req, res) => {
     const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
     const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
-    const vkAuthUrl = `https://id.vk.com/authorize?client_id=${VK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email`;
+    const state = Math.random().toString(36).substring(2, 15);
+    const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    // VK ID uses id.vk.com/auth with scope, state, uuid, client_id, and redirect_uri
+    const vkAuthUrl = `https://id.vk.com/auth?client_id=${VK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email&state=${state}&uuid=${uuid}`;
     res.json({ url: vkAuthUrl });
   });
 
@@ -150,13 +165,113 @@ async function startServer() {
       const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
 
       // 1. Exchange code for access token
-      const tokenUrl = `https://oauth.vk.com/access_token?client_id=${VK_APP_ID}&client_secret=${VK_CLIENT_SECRET}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`;
-      const tokenRes = await fetch(tokenUrl);
-      const tokenData = await tokenRes.json();
+      let tokenData: any = null;
+      let exchangeErrors: string[] = [];
 
-      if (tokenData.error) {
-        console.error("VK OAuth token error:", tokenData);
-        return res.status(400).send(`VK OAuth Error: ${tokenData.error_description || tokenData.error}`);
+      // Method A: Attempt new VK ID token exchange via id.vk.com POST request
+      try {
+        console.log("Attempting token exchange via VK ID (id.vk.com/oauth2/auth)...");
+        const body = new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: VK_APP_ID,
+          client_secret: VK_CLIENT_SECRET,
+          redirect_uri: redirectUri,
+          code: code as string,
+          state: (req.query.state as string) || "state",
+          device_id: "device_id_web_client"
+        });
+        const response = await fetch("https://id.vk.com/oauth2/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body.toString()
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data && !data.error) {
+            tokenData = data;
+            console.log("VK ID token exchange successful:", {
+              user_id: tokenData.user_id,
+              has_access_token: !!tokenData.access_token
+            });
+          } else {
+            const errorDesc = data ? (data.error_description || data.error) : "empty response";
+            exchangeErrors.push(`VK ID API error: ${errorDesc}`);
+            console.warn("VK ID token exchange returned error:", data);
+          }
+        } else {
+          const text = await response.text();
+          exchangeErrors.push(`VK ID HTTP status ${response.status}: ${text}`);
+          console.warn(`VK ID token exchange failed with HTTP status ${response.status}:`, text);
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        exchangeErrors.push(`VK ID exception: ${errMsg}`);
+        console.error("VK ID token exchange exception:", err);
+      }
+
+      // Method B: Fallback to legacy VK OAuth token exchange
+      if (!tokenData) {
+        try {
+          console.log("Attempting legacy VK OAuth token exchange (oauth.vk.com/access_token)...");
+          const tokenUrl = `https://oauth.vk.com/access_token?client_id=${VK_APP_ID}&client_secret=${VK_CLIENT_SECRET}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`;
+          const tokenRes = await fetch(tokenUrl);
+          if (tokenRes.ok) {
+            const data = await tokenRes.json();
+            if (data && !data.error) {
+              tokenData = data;
+              console.log("Legacy VK OAuth token exchange successful:", {
+                user_id: tokenData.user_id,
+                has_access_token: !!tokenData.access_token
+              });
+            } else {
+              const errorDesc = data ? (data.error_description || data.error) : "empty response";
+              exchangeErrors.push(`Legacy VK API error: ${errorDesc}`);
+              console.warn("Legacy VK token exchange returned error:", data);
+            }
+          } else {
+            const text = await tokenRes.text();
+            exchangeErrors.push(`Legacy VK HTTP status ${tokenRes.status}: ${text}`);
+            console.warn(`Legacy VK token exchange failed with HTTP status ${tokenRes.status}:`, text);
+          }
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          exchangeErrors.push(`Legacy VK exception: ${errMsg}`);
+          console.error("Legacy VK token exchange exception:", err);
+        }
+      }
+
+      if (!tokenData) {
+        console.error("Both VK ID and legacy VK token exchange failed:", exchangeErrors);
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>VK Auth Error</title>
+              <style>
+                body { font-family: system-ui, sans-serif; padding: 40px; background: #fff5f5; color: #c53030; line-height: 1.6; max-width: 600px; margin: 0 auto; text-align: center; }
+                h1 { margin-bottom: 20px; }
+                ul { text-align: left; margin: 20px auto; max-width: 500px; }
+                pre { background: #fee2e2; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 13px; text-align: left; }
+                .btn { display: inline-block; background: #0077FF; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 20px; }
+              </style>
+            </head>
+            <body>
+              <h1>Ошибка авторизации VK ID</h1>
+              <p>Не удалось обменять код авторизации на токен доступа. Возможные причины:</p>
+              <ul>
+                <li>Неверный <strong>Client Secret (Защищенный ключ)</strong> в настройках приложения.</li>
+                <li>Неверный <strong>App ID (ID приложения)</strong>.</li>
+                <li>Адрес обратного вызова (Redirect URI) не совпадает с указанным в кабинете разработчика VK ID.</li>
+              </ul>
+              <p>Детали ошибок:</p>
+              <pre>${exchangeErrors.join("\n")}</pre>
+              <p>Ваш текущий Redirect URI: <code>${redirectUri}</code></p>
+              <p>Ваш текущий App ID: <code>${VK_APP_ID}</code></p>
+              <a class="btn" href="/">Вернуться на главную</a>
+            </body>
+          </html>
+        `);
       }
 
       const { access_token, user_id, email } = tokenData;

@@ -144,7 +144,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const apiOrigin = window.location.origin;
       const redirectUri = `${apiOrigin}/api/auth/vk/callback`;
       const appId = import.meta.env.VITE_VK_APP_ID || "54700577";
-      authUrl = `https://id.vk.com/authorize?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email`;
+      const state = Math.random().toString(36).substring(2, 15);
+      const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      authUrl = `https://id.vk.com/auth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email&state=${state}&uuid=${uuid}`;
     }
 
     try {
