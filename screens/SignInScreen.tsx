@@ -22,6 +22,34 @@ const SignInScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [bgImage, setBgImage] = useState('');
 
+  // VK ID Config Helpers
+  const [showVkHelp, setShowVkHelp] = useState(false);
+  const [vkConfig, setVkConfig] = useState<{ appId: string; redirectUri: string; isConfigured: boolean } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const fetchVkConfig = async () => {
+      try {
+        const res = await fetch(`${window.location.origin}/api/auth/vk/config`);
+        if (res.ok) {
+          const data = await res.json();
+          setVkConfig(data);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch VK config:", err);
+      }
+    };
+    fetchVkConfig();
+  }, []);
+
+  const handleCopyRedirectUri = () => {
+    if (vkConfig?.redirectUri) {
+      navigator.clipboard.writeText(vkConfig.redirectUri);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   // Rate limiting state
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
@@ -267,6 +295,50 @@ const SignInScreen: React.FC = () => {
                   </svg>
                   <span>Войти с VK ID</span>
                 </button>
+
+                {/* VK ID Helper Instructions */}
+                <div className="mt-2 text-left">
+                  <button
+                    type="button"
+                    onClick={() => setShowVkHelp(!showVkHelp)}
+                    className="text-xs text-sage hover:text-primary flex items-center gap-1 font-medium transition-colors focus:outline-none"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">
+                      {showVkHelp ? "keyboard_arrow_up" : "keyboard_arrow_down"}
+                    </span>
+                    <span>Как настроить вход через VK ID?</span>
+                  </button>
+
+                  {showVkHelp && (
+                    <div className="mt-3 bg-sage/5 dark:bg-white/5 rounded-xl p-4 border border-sage/15 text-xs text-forest dark:text-gray-200 space-y-3 leading-relaxed">
+                      <p className="font-semibold text-primary">Инструкция по настройке приложения VK ID:</p>
+                      <ol className="list-decimal pl-4 space-y-1.5 text-[11px] text-sage dark:text-gray-300">
+                        <li>Перейдите в кабинет VK ID для бизнеса: <a href="https://id.vk.ru/about/business/go" target="_blank" rel="noopener noreferrer" className="underline text-[#0077FF]">id.vk.ru/about/business/go</a></li>
+                        <li>Выберите ваше приложение (или создайте новое типа «Web-сайт»).</li>
+                        <li>Перейдите в раздел <strong>«Настройки»</strong>.</li>
+                        <li>Добавьте в поле <strong>«Разрешенные Redirect URI»</strong> (Адрес обратного вызова) следующее значение:</li>
+                      </ol>
+
+                      {vkConfig && (
+                        <div className="flex items-stretch gap-1.5 bg-white dark:bg-black/20 p-2 rounded-lg border border-sage/10 select-all font-mono text-[10px] break-all">
+                          <span className="flex-1">{vkConfig.redirectUri}</span>
+                          <button
+                            type="button"
+                            onClick={handleCopyRedirectUri}
+                            className="text-[#0077FF] hover:text-[#0066EE] font-sans font-bold px-1.5 shrink-0"
+                          >
+                            {copied ? "Скопировано!" : "Копировать"}
+                          </button>
+                        </div>
+                      )}
+
+                      <ol className="list-decimal pl-4 space-y-1.5 text-[11px] text-sage dark:text-gray-300" start={5}>
+                        <li>Убедитесь, что <strong>ID приложения (App ID)</strong> совпадает с: <code className="bg-white dark:bg-black/20 px-1 py-0.5 rounded font-mono font-bold text-primary">{vkConfig?.appId || "54700577"}</code></li>
+                        <li>Добавьте переменные <strong>VK_APP_ID</strong> и <strong>VK_CLIENT_SECRET</strong> (Защищенный ключ) в настройки AI Studio (в разделе Settings & Secrets) для вашего контейнера, чтобы сервер мог обменивать коды на токены.</li>
+                      </ol>
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
