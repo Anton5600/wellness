@@ -26,7 +26,7 @@ async function startServer() {
 
   app.get("/api/auth/vk/url", (req, res) => {
     const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
-    const proto = req.get("x-forwarded-proto") || (host.includes("onrender.com") ? "https" : req.protocol);
+    const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
     const vkAuthUrl = `https://id.vk.com/authorize?client_id=${VK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email`;
     res.json({ url: vkAuthUrl });
@@ -146,7 +146,7 @@ async function startServer() {
       }
 
       const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
-      const proto = req.get("x-forwarded-proto") || (host.includes("onrender.com") ? "https" : req.protocol);
+      const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
       const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
 
       // 1. Exchange code for access token

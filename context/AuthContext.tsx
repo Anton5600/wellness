@@ -126,7 +126,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signInWithVK = async () => {
     let authUrl = '';
     try {
-      const apiUrl = 'https://wellness-t3q6.onrender.com/api/auth/vk/url';
+      const apiOrigin = window.location.origin;
+      const apiUrl = `${apiOrigin}/api/auth/vk/url`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       const res = await fetch(apiUrl, { signal: controller.signal });
@@ -140,8 +141,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     if (!authUrl) {
-      const redirectUri = 'https://wellness-t3q6.onrender.com/api/auth/vk/callback';
-      authUrl = `https://id.vk.com/authorize?client_id=54700577&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email`;
+      const apiOrigin = window.location.origin;
+      const redirectUri = `${apiOrigin}/api/auth/vk/callback`;
+      const appId = import.meta.env.VITE_VK_APP_ID || "54700577";
+      authUrl = `https://id.vk.com/authorize?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email`;
     }
 
     try {
