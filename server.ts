@@ -21,7 +21,7 @@ async function startServer() {
   });
 
   // VK OAuth Routes
-  const VK_APP_ID = process.env.VK_APP_ID || "54700577";
+  const VK_APP_ID = process.env.VK_APP_ID || "54703393";
   const VK_CLIENT_SECRET = process.env.VK_CLIENT_SECRET || "";
 
   app.get("/api/auth/vk/config", (req, res) => {
