@@ -25,6 +25,7 @@ interface AuthContextType {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithVK: (useLegacy?: boolean) => Promise<void>;
+  signInWithYandex: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -40,9 +41,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user authenticated via VK OAuth redirect
+    // Check if user authenticated via VK or Yandex OAuth redirect
     const savedVkUser = localStorage.getItem('vk_auth_user');
-    if (savedVkUser) {
+    const savedYandexUser = localStorage.getItem('yandex_auth_user');
+    if (savedYandexUser) {
+      try {
+        const parsed = JSON.parse(savedYandexUser);
+        if (parsed && parsed.uid) {
+          setUser({
+            uid: parsed.uid,
+            email: parsed.email || 'Yandex User',
+            name: parsed.name || 'Пользователь Яндекс',
+            emailVerified: true,
+          });
+        }
+      } catch (e) {
+        console.error("Error parsing saved Yandex user", e);
+      }
+    } else if (savedVkUser) {
       try {
         const parsed = JSON.parse(savedVkUser);
         if (parsed && parsed.uid) {
@@ -58,7 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
-    // Listen for postMessage from VK auth popup
+    // Listen for postMessage from auth popups
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'VK_AUTH_SUCCESS' && event.data.user) {
         const vkUser = event.data.user;
@@ -70,25 +86,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
         localStorage.setItem('vk_auth_user', JSON.stringify(vkUser));
         setUser(appUser);
+      } else if (event.data && event.data.type === 'YANDEX_AUTH_SUCCESS' && event.data.user) {
+        const yandexUser = event.data.user;
+        const appUser: User = {
+          uid: yandexUser.uid,
+          email: yandexUser.email || 'Yandex User',
+          name: yandexUser.name || 'Пользователь Яндекс',
+          emailVerified: true,
+        };
+        localStorage.setItem('yandex_auth_user', JSON.stringify(yandexUser));
+        setUser(appUser);
       }
     };
     window.addEventListener('message', handleMessage);
 
-    // Listen for mobile deep link appUrlOpen (for VK OAuth in Capacitor)
+    // Listen for mobile deep link appUrlOpen (for OAuth in Capacitor)
     const handleAppUrlOpen = async (event: { url: string }) => {
       if (event.url && event.url.includes('wellness://auth')) {
         try {
           const urlObj = new URL(event.url);
           const dataParam = urlObj.searchParams.get('data');
           if (dataParam) {
-            const vkUser = JSON.parse(decodeURIComponent(dataParam));
+            const oauthUser = JSON.parse(decodeURIComponent(dataParam));
+            const isYandex = oauthUser.provider === 'yandex';
             const appUser: User = {
-              uid: vkUser.uid,
-              email: vkUser.email || 'VK User',
-              name: vkUser.name || 'Пользователь VK',
+              uid: oauthUser.uid,
+              email: oauthUser.email || (isYandex ? 'Yandex User' : 'VK User'),
+              name: oauthUser.name || (isYandex ? 'Пользователь Яндекс' : 'Пользователь VK'),
               emailVerified: true,
             };
-            localStorage.setItem('vk_auth_user', JSON.stringify(vkUser));
+            localStorage.setItem(isYandex ? 'yandex_auth_user' : 'vk_auth_user', JSON.stringify(oauthUser));
             setUser(appUser);
             await Browser.close().catch(() => {});
           }
@@ -109,8 +136,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           emailVerified: firebaseUser.emailVerified,
         };
         setUser(appUser);
-        localStorage.removeItem('vk_auth_user'); // Clear local VK override if Firebase user exists
-      } else if (!localStorage.getItem('vk_auth_user')) {
+        localStorage.removeItem('vk_auth_user'); // Clear local overrides if Firebase user exists
+        localStorage.removeItem('yandex_auth_user');
+      } else if (!localStorage.getItem('vk_auth_user') && !localStorage.getItem('yandex_auth_user')) {
         setUser(null);
       }
       setLoading(false);
@@ -178,6 +206,56 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const signInWithYandex = async () => {
+    let authUrl = '';
+    try {
+      const apiOrigin = window.location.origin;
+      const apiUrl = `${apiOrigin}/api/auth/yandex/url`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(apiUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      if (data.url) {
+        authUrl = data.url;
+      }
+    } catch (e) {
+      console.warn("Could not fetch Yandex auth URL from backend, using direct fallback:", e);
+    }
+
+    if (!authUrl) {
+      const apiOrigin = window.location.origin;
+      const redirectUri = `${apiOrigin}/api/auth/yandex/callback`;
+      const clientId = import.meta.env.VITE_YANDEX_CLIENT_ID || "";
+      const state = Math.random().toString(36).substring(2, 15);
+      authUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+    }
+
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Browser.open({ url: authUrl });
+      } else {
+        // Open popup for Yandex authentication
+        const width = 600;
+        const height = 650;
+        const left = (window.innerWidth - width) / 2;
+        const top = (window.innerHeight - height) / 2;
+        const popup = window.open(
+          authUrl,
+          'yandex_auth',
+          `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,status=yes`
+        );
+
+        if (!popup) {
+          window.location.href = authUrl;
+        }
+      }
+    } catch (e) {
+      console.error("Error initiating Yandex sign in:", e);
+      throw e;
+    }
+  };
+
   const reloadUser = async () => {
     if (auth.currentUser) {
       await auth.currentUser.reload();
@@ -220,6 +298,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = async () => {
     localStorage.removeItem('vk_auth_user');
+    localStorage.removeItem('yandex_auth_user');
     setUser(null);
     try {
       await firebaseSignOut(auth);
@@ -234,6 +313,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const deleteAccount = async () => {
     localStorage.removeItem('vk_auth_user');
+    localStorage.removeItem('yandex_auth_user');
     if (auth.currentUser) {
       await deleteAllUserData(auth.currentUser.uid);
       await deleteUser(auth.currentUser);
@@ -242,7 +322,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithVK, signInWithEmail, signUpWithEmail, signOut, deleteAccount, reloadUser, resetPassword }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithVK, signInWithYandex, signInWithEmail, signUpWithEmail, signOut, deleteAccount, reloadUser, resetPassword }}>
       {!loading && children}
     </AuthContext.Provider>
   );

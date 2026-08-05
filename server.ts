@@ -25,7 +25,7 @@ async function startServer() {
   const VK_CLIENT_SECRET = process.env.VK_CLIENT_SECRET || "";
 
   app.get("/api/auth/vk/config", (req, res) => {
-    const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
+    const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
     const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
     res.json({
@@ -36,7 +36,7 @@ async function startServer() {
   });
 
   app.get("/api/auth/vk/url", (req, res) => {
-    const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
+    const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
     const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
     const state = Math.random().toString(36).substring(2, 15);
@@ -165,7 +165,7 @@ async function startServer() {
         `);
       }
 
-      const host = req.get("x-forwarded-host") || req.get("host") || "wellness-t3q6.onrender.com";
+      const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
       const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
       const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
 
@@ -336,6 +336,160 @@ async function startServer() {
     } catch (err: any) {
       console.error("VK Callback Error:", err);
       res.status(500).send("Ошибка при входе через VK: " + (err?.message || "Unknown error"));
+    }
+  });
+
+  // Yandex OAuth Routes
+  const YANDEX_CLIENT_ID = process.env.YANDEX_CLIENT_ID || process.env.VITE_YANDEX_CLIENT_ID || "";
+  const YANDEX_CLIENT_SECRET = process.env.YANDEX_CLIENT_SECRET || "";
+
+  app.get("/api/auth/yandex/config", (req, res) => {
+    const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
+    const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+    const redirectUri = `${proto}://${host}/api/auth/yandex/callback`;
+    res.json({
+      clientId: YANDEX_CLIENT_ID,
+      redirectUri: redirectUri,
+      isConfigured: YANDEX_CLIENT_ID !== "" && YANDEX_CLIENT_SECRET !== ""
+    });
+  });
+
+  app.get("/api/auth/yandex/url", (req, res) => {
+    const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
+    const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+    const redirectUri = `${proto}://${host}/api/auth/yandex/callback`;
+    const state = Math.random().toString(36).substring(2, 15);
+    const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+    res.json({ url: yandexAuthUrl });
+  });
+
+  app.get("/api/auth/yandex/callback", async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      if (!code) {
+        return res.status(400).send("Отсутствует код авторизации Yandex");
+      }
+
+      const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
+      const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+      const redirectUri = `${proto}://${host}/api/auth/yandex/callback`;
+
+      // Exchange code for token
+      console.log("Attempting Yandex OAuth token exchange...");
+      const bodyParams = new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code as string,
+        client_id: YANDEX_CLIENT_ID,
+        client_secret: YANDEX_CLIENT_SECRET
+      });
+
+      const tokenResponse = await fetch("https://oauth.yandex.ru/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: bodyParams.toString()
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error("Yandex Token exchange error response:", errorText);
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>Yandex Auth Error</title>
+              <style>
+                body { font-family: system-ui, sans-serif; padding: 40px; background: #fff5f5; color: #c53030; line-height: 1.6; max-width: 600px; margin: 0 auto; text-align: center; }
+                h1 { margin-bottom: 20px; }
+                pre { background: #fee2e2; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 13px; text-align: left; }
+                .btn { display: inline-block; background: #FC3F1D; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 20px; }
+              </style>
+            </head>
+            <body>
+              <h1>Ошибка авторизации Яндекс ID</h1>
+              <p>Не удалось обменять код на токен доступа. Ответ Яндекса:</p>
+              <pre>${errorText}</pre>
+              <p>Проверьте Client ID и Client Secret в вашем окружении.</p>
+              <p>Ваш Redirect URI в Яндексе должен быть: <code>${redirectUri}</code></p>
+              <a class="btn" href="/">Вернуться на главную</a>
+            </body>
+          </html>
+        `);
+      }
+
+      const tokenData = await tokenResponse.json();
+      const accessToken = tokenData.access_token;
+
+      if (!accessToken) {
+        return res.status(400).send("Не получен access_token от Яндекса");
+      }
+
+      // Fetch Yandex user profile
+      console.log("Fetching Yandex user profile info...");
+      const infoResponse = await fetch("https://login.yandex.ru/info?format=json", {
+        headers: {
+          "Authorization": `OAuth ${accessToken}`
+        }
+      });
+
+      if (!infoResponse.ok) {
+        const infoErrorText = await infoResponse.text();
+        console.error("Yandex info fetch error:", infoErrorText);
+        return res.status(400).send("Не удалось получить профиль Яндекс ID: " + infoErrorText);
+      }
+
+      const yandexUser = await infoResponse.json();
+      console.log("Yandex user profile info fetched successfully:", yandexUser.id);
+
+      const userEmail = yandexUser.default_email || (yandexUser.login ? `${yandexUser.login}@yandex.ru` : "yandex_user@yandex.ru");
+      const userName = yandexUser.display_name || yandexUser.real_name || `${yandexUser.first_name || ""} ${yandexUser.last_name || ""}`.trim() || yandexUser.login || "Пользователь Яндекс";
+
+      const userPayload = JSON.stringify({
+        uid: `yandex:${yandexUser.id}`,
+        email: userEmail,
+        name: userName,
+        provider: 'yandex',
+        yandexUserId: yandexUser.id
+      });
+
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Yandex Auth</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { font-family: system-ui, sans-serif; text-align: center; padding: 40px; background: #f5f5f7; color: #1d1d1f; }
+              .btn { display: inline-block; background: #FC3F1D; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <h2>Авторизация через Яндекс успешна!</h2>
+            <p>Возвращаем вас в приложение...</p>
+            <a class="btn" href="wellness://auth?data=${encodeURIComponent(userPayload)}">Открыть приложение</a>
+            <script>
+              const userData = ${userPayload};
+              const deepLinkUrl = "wellness://auth?data=" + encodeURIComponent(JSON.stringify(userData));
+              
+              if (window.opener) {
+                window.opener.postMessage({ type: 'YANDEX_AUTH_SUCCESS', user: userData }, '*');
+                window.close();
+              } else {
+                localStorage.setItem('yandex_auth_user', JSON.stringify(userData));
+                window.location.href = deepLinkUrl;
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 1500);
+              }
+            </script>
+          </body>
+        </html>
+      `);
+
+    } catch (err: any) {
+      console.error("Yandex Callback Error:", err);
+      res.status(500).send("Ошибка при входе через Яндекс ID: " + (err?.message || "Unknown error"));
     }
   });
 
