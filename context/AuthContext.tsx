@@ -148,8 +148,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (useLegacy) {
         authUrl = `https://oauth.vk.com/authorize?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&v=5.131&state=${state}`;
       } else {
-        const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        authUrl = `https://id.vk.com/auth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email&state=${state}&uuid=${uuid}`;
+        authUrl = `https://id.vk.ru/authorize?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=vkid.personal_info%20email&state=${state}`;
       }
     }
 

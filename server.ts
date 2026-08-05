@@ -46,9 +46,8 @@ async function startServer() {
       const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&v=5.131&state=${state}`;
       res.json({ url: vkAuthUrl });
     } else {
-      const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      // VK ID uses id.vk.com/auth with scope, state, uuid, client_id, and redirect_uri
-      const vkAuthUrl = `https://id.vk.com/auth?client_id=${VK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email&state=${state}&uuid=${uuid}`;
+      // VK ID uses id.vk.ru/authorize with scope, state, client_id, and redirect_uri
+      const vkAuthUrl = `https://id.vk.ru/authorize?client_id=${VK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=vkid.personal_info%20email&state=${state}`;
       res.json({ url: vkAuthUrl });
     }
   });
