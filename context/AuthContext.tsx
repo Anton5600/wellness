@@ -151,10 +151,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
+  const getApiOrigin = () => {
+    if (Capacitor.isNativePlatform()) {
+      return "https://internal-compass.ru";
+    }
+    return window.location.origin;
+  };
+
   const signInWithVK = async (useLegacy?: boolean) => {
     let authUrl = '';
     try {
-      const apiOrigin = window.location.origin;
+      const apiOrigin = getApiOrigin();
       const apiUrl = `${apiOrigin}/api/auth/vk/url${useLegacy ? '?legacy=true' : ''}`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -169,7 +176,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     if (!authUrl) {
-      const apiOrigin = window.location.origin;
+      const apiOrigin = getApiOrigin();
       const redirectUri = `${apiOrigin}/api/auth/vk/callback`;
       const appId = import.meta.env.VITE_VK_APP_ID || "54703393";
       const state = Math.random().toString(36).substring(2, 15);
@@ -209,7 +216,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signInWithYandex = async () => {
     let authUrl = '';
     try {
-      const apiOrigin = window.location.origin;
+      const apiOrigin = getApiOrigin();
       const apiUrl = `${apiOrigin}/api/auth/yandex/url`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -224,7 +231,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     if (!authUrl) {
-      const apiOrigin = window.location.origin;
+      const apiOrigin = getApiOrigin();
       const redirectUri = `${apiOrigin}/api/auth/yandex/callback`;
       const clientId = import.meta.env.VITE_YANDEX_CLIENT_ID || "";
       const state = Math.random().toString(36).substring(2, 15);
