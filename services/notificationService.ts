@@ -45,7 +45,7 @@ export const cancelDailyReminder = async () => {
     }
 };
 
-export const scheduleMorningMood = async (timeStr: string) => {
+export const scheduleMorningMood = async (timeStr: string, customBody?: string) => {
     try {
         await LocalNotifications.cancel({ notifications: [{ id: 2 }] });
         
@@ -54,8 +54,8 @@ export const scheduleMorningMood = async (timeStr: string) => {
         await LocalNotifications.schedule({
             notifications: [
                 {
-                    title: 'Утренний настрой',
-                    body: 'Доброе утро! Не забудьте про эфирные масла для отличного дня.',
+                    title: '☀️ Утренний настрой',
+                    body: customBody || '☀️ Ваш персональный арома-настрой готов! Откройте приложение для 1-мин арома-ингаляции.',
                     id: 2,
                     schedule: { 
                         on: { 
@@ -64,6 +64,7 @@ export const scheduleMorningMood = async (timeStr: string) => {
                         },
                         allowWhileIdle: true
                     },
+                    extra: { target: 'aroma' }
                 }
             ]
         });
@@ -87,7 +88,7 @@ export const scheduleWeeklyReport = async () => {
         await LocalNotifications.schedule({
             notifications: [
                 {
-                    title: 'Еженедельный отчет',
+                    title: '📊 Еженедельный отчет',
                     body: 'Ваша эмоциональная статистика за неделю готова!',
                     id: 3,
                     schedule: { 
@@ -114,25 +115,24 @@ export const cancelWeeklyReport = async () => {
     }
 };
 
-export const scheduleStuckReminder = async () => {
+export const scheduleStuckReminder = async (customBody?: string) => {
     try {
         await LocalNotifications.cancel({ notifications: [{ id: 4 }] });
         
-        // This is a placeholder. In a real app, you'd check the history to see if they're stuck.
-        // For now, we'll just schedule it 3 days from now.
         const date = new Date();
-        date.setDate(date.getDate() + 3);
+        date.setDate(date.getDate() + 1); // 1 day interval for check
         
         await LocalNotifications.schedule({
             notifications: [
                 {
-                    title: 'Поддержка',
-                    body: 'Мы заметили, что вам грустно. Попробуйте использовать масло апельсина.',
+                    title: '🌿 Бережная арома-поддержка',
+                    body: customBody || 'Мы с вами. Эфирные масла помогли многим вернуть внутренний покой. Откройте ваш настрой.',
                     id: 4,
                     schedule: { 
                         at: date,
                         allowWhileIdle: true
                     },
+                    extra: { target: 'aroma' }
                 }
             ]
         });
@@ -148,3 +148,16 @@ export const cancelStuckReminder = async () => {
         console.error('Error canceling stuck reminder', error);
     }
 };
+
+export const initNotificationListeners = (onNavigateToAromaWidget: () => void) => {
+    try {
+        LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+            if (action.notification?.extra?.target === 'aroma' || action.notification?.id === 2 || action.notification?.id === 4) {
+                onNavigateToAromaWidget();
+            }
+        });
+    } catch (e) {
+        console.warn('LocalNotifications listeners not initialized:', e);
+    }
+};
+
