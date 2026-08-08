@@ -74,31 +74,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
+    // Helper to set OAuth user
+    const handleOAuthSuccess = (oauthUser: any) => {
+      const isYandex = oauthUser.provider === 'yandex' || oauthUser.uid?.startsWith('yandex:');
+      const appUser: User = {
+        uid: oauthUser.uid,
+        email: oauthUser.email || (isYandex ? 'Yandex User' : 'VK User'),
+        name: oauthUser.name || (isYandex ? 'Пользователь Яндекс' : 'Пользователь VK'),
+        emailVerified: true,
+      };
+      localStorage.setItem(isYandex ? 'yandex_auth_user' : 'vk_auth_user', JSON.stringify(oauthUser));
+      setUser(appUser);
+    };
+
     // Listen for postMessage from auth popups
     const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'VK_AUTH_SUCCESS' && event.data.user) {
-        const vkUser = event.data.user;
-        const appUser: User = {
-          uid: vkUser.uid,
-          email: vkUser.email || 'VK User',
-          name: vkUser.name || 'Пользователь VK',
-          emailVerified: true,
-        };
-        localStorage.setItem('vk_auth_user', JSON.stringify(vkUser));
-        setUser(appUser);
-      } else if (event.data && event.data.type === 'YANDEX_AUTH_SUCCESS' && event.data.user) {
-        const yandexUser = event.data.user;
-        const appUser: User = {
-          uid: yandexUser.uid,
-          email: yandexUser.email || 'Yandex User',
-          name: yandexUser.name || 'Пользователь Яндекс',
-          emailVerified: true,
-        };
-        localStorage.setItem('yandex_auth_user', JSON.stringify(yandexUser));
-        setUser(appUser);
+      if (event.data && (event.data.type === 'VK_AUTH_SUCCESS' || event.data.type === 'YANDEX_AUTH_SUCCESS') && event.data.user) {
+        handleOAuthSuccess(event.data.user);
       }
     };
     window.addEventListener('message', handleMessage);
+
+    // Listen for BroadcastChannel messages across windows/tabs
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('oauth_channel');
+      bc.onmessage = (event) => {
+        if (event.data && (event.data.type === 'VK_AUTH_SUCCESS' || event.data.type === 'YANDEX_AUTH_SUCCESS') && event.data.user) {
+          handleOAuthSuccess(event.data.user);
+        }
+      };
+    } catch (e) {}
+
+    // Listen for localStorage changes across windows/tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if ((e.key === 'yandex_auth_user' || e.key === 'vk_auth_user') && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && parsed.uid) {
+            handleOAuthSuccess(parsed);
+          }
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
 
     // Listen for mobile deep link appUrlOpen (for OAuth in Capacitor)
     const handleAppUrlOpen = async (event: { url: string }) => {
@@ -108,15 +127,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const dataParam = urlObj.searchParams.get('data');
           if (dataParam) {
             const oauthUser = JSON.parse(decodeURIComponent(dataParam));
-            const isYandex = oauthUser.provider === 'yandex';
-            const appUser: User = {
-              uid: oauthUser.uid,
-              email: oauthUser.email || (isYandex ? 'Yandex User' : 'VK User'),
-              name: oauthUser.name || (isYandex ? 'Пользователь Яндекс' : 'Пользователь VK'),
-              emailVerified: true,
-            };
-            localStorage.setItem(isYandex ? 'yandex_auth_user' : 'vk_auth_user', JSON.stringify(oauthUser));
-            setUser(appUser);
+            handleOAuthSuccess(oauthUser);
             await Browser.close().catch(() => {});
           }
         } catch (e) {
@@ -147,6 +158,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       unsubscribe();
       window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorageChange);
+      if (bc) bc.close();
       appUrlListener.then(listener => listener.remove()).catch(() => {});
     };
   }, []);

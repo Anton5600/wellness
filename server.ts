@@ -318,15 +318,20 @@ async function startServer() {
               const userData = ${userPayload};
               const deepLinkUrl = "wellness://auth?data=" + encodeURIComponent(JSON.stringify(userData));
               
+              localStorage.setItem('vk_auth_user', JSON.stringify(userData));
+              
+              try {
+                const bc = new BroadcastChannel('oauth_channel');
+                bc.postMessage({ type: 'VK_AUTH_SUCCESS', user: userData });
+              } catch (e) {}
+
               if (window.opener) {
-                window.opener.postMessage({ type: 'VK_AUTH_SUCCESS', user: userData }, '*');
-                window.close();
+                try {
+                  window.opener.postMessage({ type: 'VK_AUTH_SUCCESS', user: userData }, '*');
+                } catch(e) {}
+                setTimeout(() => { window.close(); }, 300);
               } else {
-                localStorage.setItem('vk_auth_user', JSON.stringify(userData));
-                window.location.href = deepLinkUrl;
-                setTimeout(() => {
-                  window.location.href = '/';
-                }, 1500);
+                setTimeout(() => { window.location.href = '/'; }, 500);
               }
             </script>
           </body>
@@ -379,7 +384,8 @@ async function startServer() {
         grant_type: "authorization_code",
         code: code as string,
         client_id: YANDEX_CLIENT_ID,
-        client_secret: YANDEX_CLIENT_SECRET
+        client_secret: YANDEX_CLIENT_SECRET,
+        redirect_uri: redirectUri
       });
 
       const tokenResponse = await fetch("https://oauth.yandex.ru/token", {
@@ -471,15 +477,20 @@ async function startServer() {
               const userData = ${userPayload};
               const deepLinkUrl = "wellness://auth?data=" + encodeURIComponent(JSON.stringify(userData));
               
+              localStorage.setItem('yandex_auth_user', JSON.stringify(userData));
+              
+              try {
+                const bc = new BroadcastChannel('oauth_channel');
+                bc.postMessage({ type: 'YANDEX_AUTH_SUCCESS', user: userData });
+              } catch (e) {}
+
               if (window.opener) {
-                window.opener.postMessage({ type: 'YANDEX_AUTH_SUCCESS', user: userData }, '*');
-                window.close();
+                try {
+                  window.opener.postMessage({ type: 'YANDEX_AUTH_SUCCESS', user: userData }, '*');
+                } catch(e) {}
+                setTimeout(() => { window.close(); }, 300);
               } else {
-                localStorage.setItem('yandex_auth_user', JSON.stringify(userData));
-                window.location.href = deepLinkUrl;
-                setTimeout(() => {
-                  window.location.href = '/';
-                }, 1500);
+                setTimeout(() => { window.location.href = '/'; }, 500);
               }
             </script>
           </body>
