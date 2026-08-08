@@ -153,11 +153,13 @@ const DashboardScreen: React.FC = () => {
     setIsSynthesizing(true);
     let resolvedApiUrl = '';
     try {
-      // Для мобильных устройств используем VITE_API_URL или домен Amvera, для веб-браузера - относительный путь
+      // В веб-браузере всегда используем относительный путь /api/ai/synthesis,
+      // чтобы запрос шёл напрямую на тот сервер, где открыт сайт (Amvera, Tuqo и т.д.)
       if (Capacitor.isNativePlatform()) {
-        resolvedApiUrl = import.meta.env.VITE_API_URL || 'https://wellness-anton56.amvera.io';
+        const envUrl = import.meta.env.VITE_API_URL;
+        resolvedApiUrl = (envUrl && !envUrl.includes('onrender')) ? envUrl : 'https://wellness-anton56.amvera.io';
       } else {
-        resolvedApiUrl = import.meta.env.VITE_API_URL || '';
+        resolvedApiUrl = '';
       }
       
       console.log(`Отправка запроса на: ${resolvedApiUrl}/api/ai/synthesis`);
