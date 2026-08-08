@@ -153,9 +153,9 @@ const DashboardScreen: React.FC = () => {
     setIsSynthesizing(true);
     let resolvedApiUrl = '';
     try {
-      // Для мобильных устройств принудительно используем Render, если VITE_API_URL не задан правильно для продакшена
+      // Для мобильных устройств используем VITE_API_URL или домен Amvera, для веб-браузера - относительный путь
       if (Capacitor.isNativePlatform()) {
-        resolvedApiUrl = 'https://wellness-t3q6.onrender.com';
+        resolvedApiUrl = import.meta.env.VITE_API_URL || 'https://wellness-anton56.amvera.io';
       } else {
         resolvedApiUrl = import.meta.env.VITE_API_URL || '';
       }
