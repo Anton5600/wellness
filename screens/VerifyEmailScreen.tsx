@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 
 const VerifyEmailScreen: React.FC = () => {
   const { user, reloadUser, signOut } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -16,6 +18,9 @@ const VerifyEmailScreen: React.FC = () => {
       await reloadUser();
       if (!auth.currentUser?.emailVerified) {
         setError('Почта еще не подтверждена. Пожалуйста, проверьте папку "Спам", если не видите письмо.');
+      } else {
+        setMessage('Почта успешно подтверждена!');
+        setTimeout(() => navigate('/'), 1000);
       }
     } catch (err: any) {
       setError(err.message || 'Ошибка проверки статуса');
@@ -70,15 +75,22 @@ const VerifyEmailScreen: React.FC = () => {
         <button 
           onClick={handleCheckVerification}
           disabled={loading}
-          className="w-full bg-primary text-forest font-bold py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform mb-4 disabled:opacity-70"
+          className="w-full bg-primary text-forest font-bold py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform mb-3 disabled:opacity-70"
         >
           {loading ? 'Проверка...' : 'Я подтвердил(а) почту'}
         </button>
 
         <button 
+          onClick={() => navigate('/')}
+          className="w-full bg-gray-100 dark:bg-[#2a2a2a] text-forest dark:text-white font-bold py-3.5 rounded-xl active:scale-[0.98] transition-transform mb-3 text-sm"
+        >
+          Продолжить в приложении
+        </button>
+
+        <button 
           onClick={handleResendEmail}
           disabled={loading}
-          className="w-full bg-transparent border border-sage/30 text-forest dark:text-white font-semibold py-4 rounded-xl active:scale-[0.98] transition-transform mb-6 disabled:opacity-70"
+          className="w-full bg-transparent border border-sage/30 text-forest dark:text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-transform mb-6 disabled:opacity-70 text-sm"
         >
           Отправить письмо еще раз
         </button>

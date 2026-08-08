@@ -153,32 +153,26 @@ const AppRoutes: React.FC = () => {
       <Routes>
         <Route path="/legal/:documentType" element={<LegalScreen />} />
         {user ? (
-          user.emailVerified ? (
-            <>
-              <Route path="/" element={<DashboardScreen />} />
-              <Route path="/quiz-intro" element={<QuizIntroScreen />} />
-              <Route path="/quiz" element={<QuizQuestionScreen />} />
-              <Route path="/result" element={<QuizResultScreen />} />
-              <Route path="/history" element={<HistoryScreen />} />
-              <Route path="/progress" element={<ProgressScreen />} />
-              <Route path="/cabinet" element={<CabinetScreen />} />
-              <Route path="/cart" element={<CartScreen />} />
-              <Route path="/profile" element={<ProfileScreen />} />
-              <Route path="/security" element={<SecurityScreen />} />
-              <Route path="/notifications" element={<NotificationsScreen />} />
-              <Route path="/admin" element={<AdminScreen />} />
-              <Route path="/admin-oils" element={<AdminOilsScreen />} />
-              <Route path="/admin-orders" element={<AdminOrdersScreen />} />
-              <Route path="/admin-cards" element={<AdminCardsScreen />} />
-              <Route path="/symbols-dictionary" element={<SymbolsDictionaryScreen />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </>
-          ) : (
-            <>
-              <Route path="/verify-email" element={<VerifyEmailScreen />} />
-              <Route path="*" element={<Navigate to="/verify-email" />} />
-            </>
-          )
+          <>
+            <Route path="/" element={<DashboardScreen />} />
+            <Route path="/quiz-intro" element={<QuizIntroScreen />} />
+            <Route path="/quiz" element={<QuizQuestionScreen />} />
+            <Route path="/result" element={<QuizResultScreen />} />
+            <Route path="/history" element={<HistoryScreen />} />
+            <Route path="/progress" element={<ProgressScreen />} />
+            <Route path="/cabinet" element={<CabinetScreen />} />
+            <Route path="/cart" element={<CartScreen />} />
+            <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="/security" element={<SecurityScreen />} />
+            <Route path="/notifications" element={<NotificationsScreen />} />
+            <Route path="/admin" element={<AdminScreen />} />
+            <Route path="/admin-oils" element={<AdminOilsScreen />} />
+            <Route path="/admin-orders" element={<AdminOrdersScreen />} />
+            <Route path="/admin-cards" element={<AdminCardsScreen />} />
+            <Route path="/symbols-dictionary" element={<SymbolsDictionaryScreen />} />
+            <Route path="/verify-email" element={<VerifyEmailScreen />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </>
         ) : (
           <>
             <Route path="/onboarding" element={<OnboardingScreen />} />
