@@ -1,0 +1,14 @@
+meta:
+  environment: node
+  toolchain:
+    name: npm
+    version: 20
+
+build:
+  additionalCommands:
+    - npm install
+    - npm run build
+
+run:
+  scriptName: dist/server.cjs
+  containerPort: 3000
