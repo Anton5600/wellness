@@ -12,6 +12,8 @@ import {
     scheduleStuckReminder,
     cancelStuckReminder
 } from '../services/notificationService';
+import { getEmotionHistory } from '../services/firestoreService';
+import { getAromaRecommendation } from '../services/aromaRecommendationService';
 
 const NotificationsScreen: React.FC = () => {
     const { user } = useAuth();
@@ -49,6 +51,8 @@ const NotificationsScreen: React.FC = () => {
             return;
         }
 
+        const history = await getEmotionHistory(user?.uid || 'guest');
+
         let newPrefs = {};
         if (key === 'dailyReminder') { 
             setDailyReminder(value); 
@@ -59,14 +63,22 @@ const NotificationsScreen: React.FC = () => {
         if (key === 'stuckReminder') { 
             setStuckReminder(value); 
             newPrefs = { stuckReminder: value }; 
-            if (value) scheduleStuckReminder();
-            else cancelStuckReminder();
+            if (value) {
+                const rec = getAromaRecommendation(history, 'stuck_support');
+                scheduleStuckReminder(`🌿 Бережная арома-поддержка: ${rec.oilName} поможет укутать нервную систему покой.`);
+            } else {
+                cancelStuckReminder();
+            }
         }
         if (key === 'morningMood') { 
             setMorningMood(value); 
             newPrefs = { morningMood: value }; 
-            if (value) scheduleMorningMood(morningTime);
-            else cancelMorningMood();
+            if (value) {
+                const rec = getAromaRecommendation(history, 'morning');
+                scheduleMorningMood(morningTime, `☀️ Утренний настрой: рекомендуем ${rec.oilName} (${rec.badge}). Нажмите для 1-мин арома-ингаляции!`);
+            } else {
+                cancelMorningMood();
+            }
         }
         if (key === 'weeklyReport') { 
             setWeeklyReport(value); 

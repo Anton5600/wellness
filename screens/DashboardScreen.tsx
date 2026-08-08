@@ -10,6 +10,8 @@ import BottomNavBar from '../components/BottomNavBar';
 import { useCart } from '../context/CartContext';
 import { METAPHORIC_CARDS, MetaphoricCard } from '../data/cards';
 import { getQuoteForDay, getRandomQuote } from '../data/quotes';
+import { AromaMoodWidget } from '../components/AromaMoodWidget';
+import { initNotificationListeners } from '../services/notificationService';
 
 const LOADING_PHRASES = [
   "Настраиваем нейронные связи на дзен...",
@@ -100,6 +102,15 @@ const DashboardScreen: React.FC = () => {
       card
     }));
   };
+
+  useEffect(() => {
+    initNotificationListeners(() => {
+      const widget = document.getElementById('aroma-widget');
+      if (widget) {
+        widget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (!quote) {
@@ -277,6 +288,9 @@ const DashboardScreen: React.FC = () => {
              </div>
           )}
         </div>
+
+        {/* Personalized Aroma Support Widget */}
+        <AromaMoodWidget history={history} />
       </section>
       
        <section className="grid grid-cols-2 gap-4 px-6 pb-4">
