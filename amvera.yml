@@ -6,9 +6,10 @@ meta:
 
 build:
   additionalCommands:
-    - npm install
+    - npm install --include=dev
     - npm run build
 
 run:
   scriptName: dist/server.cjs
+  persistencePath: /data
   containerPort: 3000
