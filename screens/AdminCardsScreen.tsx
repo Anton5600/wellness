@@ -64,7 +64,7 @@ const AdminCardsScreen: React.FC = () => {
             onClick={e => e.stopPropagation()}
           >
             {/* Upper part: Pristine Art Frame */}
-            <div className="aspect-[4/3] relative w-full overflow-hidden bg-gray-100 dark:bg-gray-900">
+            <div className="aspect-[3/4] relative w-full overflow-hidden bg-gray-900">
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -76,11 +76,15 @@ const AdminCardsScreen: React.FC = () => {
                 <span className="material-symbols-outlined shrink-0 block">close</span>
               </button>
               <div 
-                className="absolute inset-0 bg-cover bg-center" 
+                className="absolute inset-0 bg-cover bg-center blur-md opacity-30 scale-110" 
                 style={{ backgroundImage: `url("${activeCard.image}")` }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10" />
-              <div className="absolute top-4 left-4">
+              <div 
+                className="absolute inset-0 bg-contain bg-center bg-no-repeat z-10" 
+                style={{ backgroundImage: `url("${activeCard.image}")` }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10 z-10 pointer-events-none" />
+              <div className="absolute top-4 left-4 z-20">
                 <div className="bg-white/20 backdrop-blur text-white px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full shadow-sm border border-white/30">
                   {activeCard.id}
                 </div>

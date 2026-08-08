@@ -323,12 +323,16 @@ const DashboardScreen: React.FC = () => {
             </div>
         ) : dailyCard && (
             <div className="bg-white dark:bg-[#1a2d18] rounded-2xl overflow-hidden border border-[#e2e8e1] dark:border-sage/30 shadow-lg flex flex-col group">
-                <div className="relative w-full aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-900">
+                <div className="relative w-full aspect-[3/4] overflow-hidden bg-gray-900">
                     <div 
-                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" 
+                        className="absolute inset-0 bg-cover bg-center blur-md opacity-30 scale-110" 
                         style={{ backgroundImage: `url("${dailyCard.image}")` }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10" />
+                    <div 
+                        className="absolute inset-0 bg-contain bg-center bg-no-repeat transition-transform duration-500 group-hover:scale-105 z-10" 
+                        style={{ backgroundImage: `url("${dailyCard.image}")` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10 z-10 pointer-events-none" />
                     
                     <div className="absolute top-4 right-4 bg-black/50 backdrop-blur text-white/90 px-3 py-1.5 rounded-full z-20 flex items-center gap-1.5 shadow-sm">
                       <span className="material-symbols-outlined shrink-0 text-sm">schedule</span>

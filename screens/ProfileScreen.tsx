@@ -73,6 +73,24 @@ const ProfileScreen: React.FC = () => {
                 <p className="text-sage dark:text-gray-400 mt-1">{user?.email}</p>
             </header>
 
+            {!user?.emailVerified && (
+                <div className="mx-6 mb-2 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">mark_email_unread</span>
+                        <div className="text-left">
+                            <p className="text-sm font-bold text-forest dark:text-white">Email не подтвержден</p>
+                            <p className="text-xs text-sage dark:text-gray-400">Подтвердите адрес для безопасности</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => navigate('/verify-email')} 
+                        className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform shrink-0 shadow-sm"
+                    >
+                        Подтвердить
+                    </button>
+                </div>
+            )}
+
             <main className="px-6 mt-4">
                 <div className="bg-white dark:bg-[#1f1f1f] rounded-xl overflow-hidden shadow-sm">
                     {menuItems.map((item, index) => (
