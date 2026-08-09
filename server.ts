@@ -24,7 +24,7 @@ async function startServer() {
   const VK_CLIENT_SECRET = process.env.VK_CLIENT_SECRET || "";
 
   app.get("/api/auth/vk/config", (req, res) => {
-    const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
+    const host = req.get("x-forwarded-host") || req.get("host") || "wellness-anton56.amvera.io";
     const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
     res.json({
@@ -35,7 +35,7 @@ async function startServer() {
   });
 
   app.get("/api/auth/vk/url", (req, res) => {
-    const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
+    const host = req.get("x-forwarded-host") || req.get("host") || "wellness-anton56.amvera.io";
     const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const redirectUri = `${proto}://${host}/api/auth/vk/callback`;
     const state = Math.random().toString(36).substring(2, 15);
@@ -348,7 +348,7 @@ async function startServer() {
   const YANDEX_CLIENT_SECRET = process.env.YANDEX_CLIENT_SECRET || "";
 
   app.get("/api/auth/yandex/config", (req, res) => {
-    const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
+    const host = req.get("x-forwarded-host") || req.get("host") || "wellness-anton56.amvera.io";
     const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const redirectUri = `${proto}://${host}/api/auth/yandex/callback`;
     res.json({
@@ -359,7 +359,7 @@ async function startServer() {
   });
 
   app.get("/api/auth/yandex/url", (req, res) => {
-    const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
+    const host = req.get("x-forwarded-host") || req.get("host") || "wellness-anton56.amvera.io";
     const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
     const redirectUri = `${proto}://${host}/api/auth/yandex/callback`;
     const state = Math.random().toString(36).substring(2, 15);
@@ -374,7 +374,7 @@ async function startServer() {
         return res.status(400).send("Отсутствует код авторизации Yandex");
       }
 
-      const host = req.get("x-forwarded-host") || req.get("host") || "internal-compass.ru";
+      const host = req.get("x-forwarded-host") || req.get("host") || "wellness-anton56.amvera.io";
       const proto = req.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
       const redirectUri = `${proto}://${host}/api/auth/yandex/callback`;
 
@@ -490,7 +490,11 @@ async function startServer() {
                 } catch(e) {}
                 setTimeout(() => { window.close(); }, 300);
               } else {
-                setTimeout(() => { window.location.href = '/'; }, 500);
+                // Attempt deep link navigation back to Capacitor mobile app
+                window.location.href = deepLinkUrl;
+                setTimeout(() => { 
+                  window.location.href = '/'; 
+                }, 2000);
               }
             </script>
           </body>
