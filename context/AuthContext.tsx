@@ -166,7 +166,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const getApiOrigin = () => {
     if (Capacitor.isNativePlatform()) {
-      return "https://internal-compass.ru";
+      const envUrl = import.meta.env.VITE_API_URL;
+      if (envUrl && envUrl.startsWith('http') && !envUrl.includes('10.0.2.2') && !envUrl.includes('localhost')) {
+        return envUrl.replace(/\/$/, '');
+      }
+      return "https://wellness-anton56.amvera.io";
     }
     return window.location.origin;
   };

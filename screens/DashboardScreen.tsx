@@ -162,28 +162,53 @@ const DashboardScreen: React.FC = () => {
   const handleSynthesis = async () => {
     if (!latestEmotion || !dailyCard) return;
     setIsSynthesizing(true);
-    let resolvedApiUrl = '';
-    try {
-      // В веб-браузере всегда используем относительный путь /api/ai/synthesis,
-      // чтобы запрос шёл напрямую на тот сервер, где открыт сайт (Amvera, Tuqo и т.д.)
-      if (Capacitor.isNativePlatform()) {
-        const envUrl = import.meta.env.VITE_API_URL;
-        resolvedApiUrl = (envUrl && !envUrl.includes('onrender')) ? envUrl : 'https://wellness-anton56.amvera.io';
-      } else {
-        resolvedApiUrl = '';
-      }
-      
-      console.log(`Отправка запроса на: ${resolvedApiUrl}/api/ai/synthesis`);
-      
-      const response = await fetch(`${resolvedApiUrl}/api/ai/synthesis`, {
+    
+    // В веб-браузере используем относительный путь /api/ai/synthesis.
+    // На мобильном устройстве (Capacitor native) исключаем локальные IP (10.0.2.2, localhost)
+    // и устаревшие домены, перенаправляя запрос на продуктивный сервер Amvera.
+    let primaryUrl = '';
+    if (Capacitor.isNativePlatform()) {
+      const envUrl = import.meta.env.VITE_API_URL;
+      const isLocalOrInvalid = !envUrl || 
+        envUrl.includes('localhost') || 
+        envUrl.includes('10.0.2.2') || 
+        envUrl.includes('127.0.0.1') || 
+        envUrl.includes('onrender') ||
+        !envUrl.startsWith('http');
+        
+      primaryUrl = !isLocalOrInvalid ? envUrl : 'https://wellness-anton56.amvera.io';
+    } else {
+      primaryUrl = '';
+    }
+
+    const tryFetchSynthesis = async (baseUrl: string) => {
+      const fullUrl = `${baseUrl}/api/ai/synthesis`;
+      console.log(`Отправка запроса на: ${fullUrl}`);
+      const res = await fetch(fullUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ testResult: latestEmotion, card: dailyCard, quote })
       });
+      return { res, url: fullUrl };
+    };
+
+    try {
+      let fetchResult;
+      try {
+        fetchResult = await tryFetchSynthesis(primaryUrl);
+      } catch (firstErr) {
+        if (primaryUrl !== 'https://wellness-anton56.amvera.io') {
+          console.warn(`Запрос на ${primaryUrl} не удался. Пробуем основной сервер...`);
+          fetchResult = await tryFetchSynthesis('https://wellness-anton56.amvera.io');
+        } else {
+          throw firstErr;
+        }
+      }
+
+      const { res, url } = fetchResult;
+      console.log(`Статус ответа (${url}): ${res.status}`);
       
-      console.log(`Статус ответа: ${response.status}`);
-      
-      const text = await response.text();
+      const text = await res.text();
       let data;
       try {
         data = JSON.parse(text);
@@ -191,14 +216,14 @@ const DashboardScreen: React.FC = () => {
         throw new Error(`Invalid JSON response: ${text.slice(0, 50)}...`);
       }
       
-      if (!response.ok || data.error) {
+      if (!res.ok || data.error) {
         alert(data.error || "Произошла ошибка при синтезе.");
       } else if (data.result) {
         setSynthesisText(data.result);
       }
     } catch (e: any) {
       console.error(e);
-      alert(`Ошибка сети при запросе синтеза. URL: ${resolvedApiUrl}/api/ai/synthesis. Детали: ${e.message || JSON.stringify(e)}`);
+      alert(`Ошибка сети при запросе синтеза. Детали: ${e.message || 'Проверьте интернет-соединение'}`);
     } finally {
       setIsSynthesizing(false);
     }
