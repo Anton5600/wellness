@@ -11,6 +11,7 @@ import { useCart } from '../context/CartContext';
 import { METAPHORIC_CARDS, MetaphoricCard } from '../data/cards';
 import { getQuoteForDay, getRandomQuote } from '../data/quotes';
 import { AromaMoodWidget } from '../components/AromaMoodWidget';
+import { WearableWidget } from '../components/WearableWidget';
 import { initNotificationListeners } from '../services/notificationService';
 
 const LOADING_PHRASES = [
@@ -252,7 +253,10 @@ const DashboardScreen: React.FC = () => {
         </div>
       </header>
 
-      <section className="px-6 py-6">
+      <section className="px-6 py-6 space-y-4">
+        {/* Wearable Smart Watch Widget */}
+        <WearableWidget />
+
         <div className="p-6 flex flex-col rounded-2xl shadow-lg bg-white dark:bg-[#1a2d18] border border-[#e2e8e1] dark:border-sage/30">
           {loading ? (
              <div className="animate-pulse">

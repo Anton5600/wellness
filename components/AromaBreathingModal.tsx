@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { wearableService } from '../services/wearableService';
 
 interface AromaBreathingModalProps {
   isOpen: boolean;
@@ -107,10 +108,18 @@ export const AromaBreathingModal: React.FC<AromaBreathingModalProps> = ({
           <span className="material-symbols-outlined text-2xl">close</span>
         </button>
 
-        {/* Top badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-6">
-          <span className="material-symbols-outlined text-sm">spa</span>
-          {oilName}
+        {/* Top badges */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase tracking-wider">
+            <span className="material-symbols-outlined text-sm">spa</span>
+            {oilName}
+          </div>
+          {wearableService.getDevice().connected && (
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-bold">
+              <span className="material-symbols-outlined text-xs animate-bounce">favorite</span>
+              <span>{wearableService.getMetrics().heartRate} уд/мин</span>
+            </div>
+          )}
         </div>
 
         {/* Animated breathing circle */}
