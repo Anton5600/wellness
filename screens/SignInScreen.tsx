@@ -20,23 +20,11 @@ const SignInScreen: React.FC = () => {
   const [error, setError] = useState('');
   const [resetMessage, setResetMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [bgImage, setBgImage] = useState('');
 
   // Rate limiting state
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
-
-  useEffect(() => {
-    const images = [
-      "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=400&h=200",
-      "https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&q=80&w=400&h=200",
-      "https://images.unsplash.com/photo-1499336315816-097655dcfbda?auto=format&fit=crop&q=80&w=400&h=200",
-      "https://images.unsplash.com/photo-1508615039623-a25605d2b022?auto=format&fit=crop&q=80&w=400&h=200",
-      "https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&q=80&w=400&h=200"
-    ];
-    setBgImage(images[Math.floor(Math.random() * images.length)]);
-  }, []);
 
   // Lockout timer effect
   useEffect(() => {
@@ -157,16 +145,11 @@ const SignInScreen: React.FC = () => {
         </h2>
       </div>
       <div className="flex-1 flex flex-col relative overflow-y-auto px-6">
-        {bgImage && (
-          <div className="w-full h-32 md:h-40 rounded-2xl overflow-hidden mb-2 mt-2 shrink-0 shadow-sm">
-            <img src={bgImage} alt="Wellness" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-          </div>
-        )}
-        <div className="pt-4 pb-4 shrink-0">
-          <h1 className="text-forest dark:text-white tracking-tight text-[32px] font-bold leading-tight">
+        <div className="pt-2 pb-2 shrink-0">
+          <h1 className="text-forest dark:text-white tracking-tight text-[28px] sm:text-[32px] font-bold leading-tight">
             {isForgotPassword ? 'Восстановление пароля' : 'Ваш путь к гармонии'}
           </h1>
-          <p className="text-sage mt-2 text-base">
+          <p className="text-sage mt-1 text-sm sm:text-base">
             {isForgotPassword 
               ? 'Введите email, на который зарегистрирован аккаунт, и мы отправим ссылку для сброса пароля.' 
               : (isSignUp ? 'Создайте аккаунт, чтобы начать свое путешествие.' : 'Войдите, чтобы продолжить свое путешествие.')}
@@ -174,23 +157,23 @@ const SignInScreen: React.FC = () => {
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl relative mb-4" role="alert">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2.5 rounded-xl relative my-2" role="alert">
             <span className="block sm:inline text-sm">{error}</span>
           </div>
         )}
 
         {resetMessage && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl relative mb-4" role="alert">
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2.5 rounded-xl relative my-2" role="alert">
             <span className="block sm:inline text-sm">{resetMessage}</span>
           </div>
         )}
 
-        <form onSubmit={isForgotPassword ? handlePasswordReset : handleEmailAuth} className="flex flex-col gap-2 py-4">
+        <form onSubmit={isForgotPassword ? handlePasswordReset : handleEmailAuth} className="flex flex-col gap-2 py-2">
           {isSignUp && !isForgotPassword && (
-            <div className="flex flex-col w-full pb-2">
-              <label className="text-forest dark:text-white text-base font-medium leading-normal pb-2">Имя</label>
+            <div className="flex flex-col w-full pb-1">
+              <label className="text-forest dark:text-white text-sm sm:text-base font-medium leading-normal pb-1">Имя</label>
               <input 
-                className="form-input flex w-full rounded-xl text-forest focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-sage/20 bg-white dark:bg-sage/10 dark:text-white dark:placeholder:text-gray-400 dark:border-sage/40 h-14 placeholder:text-sage/50 p-4 text-base font-normal disabled:opacity-50" 
+                className="form-input flex w-full rounded-xl text-forest focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-sage/20 bg-white dark:bg-sage/10 dark:text-white dark:placeholder:text-gray-400 dark:border-sage/40 h-12 sm:h-14 placeholder:text-sage/50 p-3 sm:p-4 text-base font-normal disabled:opacity-50" 
                 placeholder="Ваше имя" 
                 type="text"
                 value={name}
@@ -201,9 +184,9 @@ const SignInScreen: React.FC = () => {
             </div>
           )}
           <div className="flex flex-col w-full">
-            <label className="text-forest dark:text-white text-base font-medium leading-normal pb-2">Электронная почта</label>
+            <label className="text-forest dark:text-white text-sm sm:text-base font-medium leading-normal pb-1">Электронная почта</label>
             <input 
-              className="form-input flex w-full rounded-xl text-forest focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-sage/20 bg-white dark:bg-sage/10 dark:text-white dark:placeholder:text-gray-400 dark:border-sage/40 h-14 placeholder:text-sage/50 p-4 text-base font-normal disabled:opacity-50" 
+              className="form-input flex w-full rounded-xl text-forest focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-sage/20 bg-white dark:bg-sage/10 dark:text-white dark:placeholder:text-gray-400 dark:border-sage/40 h-12 sm:h-14 placeholder:text-sage/50 p-3 sm:p-4 text-base font-normal disabled:opacity-50" 
               placeholder="your@email.com" 
               type="email"
               value={email}
@@ -214,11 +197,11 @@ const SignInScreen: React.FC = () => {
           </div>
           
           {!isForgotPassword && (
-            <div className="flex flex-col w-full pt-4">
-              <label className="text-forest dark:text-white text-base font-medium leading-normal pb-2">Пароль</label>
+            <div className="flex flex-col w-full pt-2">
+              <label className="text-forest dark:text-white text-sm sm:text-base font-medium leading-normal pb-1">Пароль</label>
               <div className="flex w-full items-stretch rounded-xl border border-sage/20 bg-white dark:bg-sage/10 dark:border-sage/40 overflow-hidden focus-within:ring-2 focus-within:ring-primary/50">
                 <input 
-                  className="form-input flex w-full border-none focus:ring-0 bg-transparent h-14 placeholder:text-sage/50 dark:text-white dark:placeholder:text-gray-400 p-4 text-base font-normal disabled:opacity-50" 
+                  className="form-input flex w-full border-none focus:ring-0 bg-transparent h-12 sm:h-14 placeholder:text-sage/50 dark:text-white dark:placeholder:text-gray-400 p-3 sm:p-4 text-base font-normal disabled:opacity-50" 
                   placeholder="••••••••" 
                   type={showPassword ? "text" : "password"} 
                   value={password}
@@ -244,7 +227,7 @@ const SignInScreen: React.FC = () => {
               <button 
                 type="button" 
                 onClick={() => { setIsForgotPassword(true); setError(''); setResetMessage(''); }} 
-                className="text-sage text-sm font-medium hover:text-primary disabled:opacity-50"
+                className="text-sage text-xs sm:text-sm font-medium hover:text-primary disabled:opacity-50"
                 disabled={!!lockoutUntil}
               >
                 Забыли пароль?
@@ -252,11 +235,11 @@ const SignInScreen: React.FC = () => {
             </div>
           )}
           
-          <div className="pt-6 flex flex-col gap-4">
+          <div className="pt-3 flex flex-col gap-3">
             <button 
               type="submit" 
               disabled={loading || !!lockoutUntil}
-              className="w-full bg-primary text-forest font-bold py-4 rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-primary text-forest font-bold py-3.5 rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {lockoutUntil 
                 ? `Подождите ${lockoutRemaining} сек.` 
@@ -264,7 +247,7 @@ const SignInScreen: React.FC = () => {
             </button>
             {!isForgotPassword && (
               <>
-                <div className="relative flex items-center justify-center my-2">
+                <div className="relative flex items-center justify-center my-1">
                   <div className="border-t border-sage/20 w-full"></div>
                   <span className="bg-background-light dark:bg-background-dark px-3 text-xs text-sage font-medium uppercase tracking-wider">или</span>
                   <div className="border-t border-sage/20 w-full"></div>
@@ -274,7 +257,7 @@ const SignInScreen: React.FC = () => {
                   type="button"
                   onClick={handleYandexAuth}
                   disabled={loading || !!lockoutUntil}
-                  className="w-full bg-[#FC3F1D] hover:bg-[#E23010] text-white font-semibold py-3.5 px-4 rounded-xl flex items-center justify-center gap-3 shadow-md shadow-[#FC3F1D]/20 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full bg-[#FC3F1D] hover:bg-[#E23010] text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-3 shadow-md shadow-[#FC3F1D]/20 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   <svg className="w-5 h-5 shrink-0 fill-current" viewBox="0 0 24 24">
                     <path d="M12.5 2C6.701 2 2 6.701 2 12.5S6.701 23 12.5 23 23 18.299 23 12.5 18.299 2 12.5 2zm2.003 15.5h-1.636v-4.908c-.287.054-.537.108-.75.161-.213.054-.457.143-.733.268v4.479h-1.621V6.5h1.722c.673 0 1.156.096 1.45.286.294.191.44.512.44.963 0 .42-.14.733-.42.94-.28.207-.723.344-1.328.411.393.205.772.544 1.137 1.018.365.474.961 1.43 1.789 2.871l1.731 3.011H14.503z"/>
@@ -284,7 +267,7 @@ const SignInScreen: React.FC = () => {
               </>
             )}
 
-            <p className="text-xs text-center text-sage dark:text-gray-400 mt-2 px-4 leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-center text-sage dark:text-gray-400 mt-1 px-2 leading-relaxed">
               Продолжая, вы соглашаетесь с{' '}
               <button type="button" onClick={() => navigate('/legal/terms')} className="underline hover:text-primary">Пользовательским соглашением</button>{' '}
               и{' '}
@@ -296,7 +279,7 @@ const SignInScreen: React.FC = () => {
                 type="button" 
                 onClick={() => { setIsForgotPassword(false); setError(''); setResetMessage(''); }} 
                 disabled={loading || !!lockoutUntil}
-                className="w-full bg-transparent border border-sage/30 text-forest dark:text-white font-semibold py-4 rounded-xl active:scale-[0.98] transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full bg-transparent border border-sage/30 text-forest dark:text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-transform disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 Назад ко входу
               </button>
@@ -304,12 +287,12 @@ const SignInScreen: React.FC = () => {
           </div>
         </form>
         
-        <div className="flex-1"></div>
+        <div className="flex-1 min-h-[16px]"></div>
         
         {!isForgotPassword && (
-          <div className="relative w-full pt-12 pb-10 mt-auto">
+          <div className="relative w-full pt-4 pb-6 mt-auto">
             <div className="relative z-10 flex flex-col items-center gap-2">
-              <p className="text-sage text-base">
+              <p className="text-sage text-sm sm:text-base">
                 {isSignUp ? 'Уже есть аккаунт?' : 'Впервые здесь?'} 
                 <button 
                   type="button" 
