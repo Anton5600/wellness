@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNavBar from '../components/BottomNavBar';
-import { wearableService, BiometricsData, WearableDevice, WearableBrand, AromaBioRecommendation, BioImpactRecord } from '../services/wearableService';
+import { wearableService, BiometricsData, WearableDevice, WearableBrand, AromaBioRecommendation, BioImpactRecord, ConnectionMode } from '../services/wearableService';
 import { AromaBreathingModal } from '../components/AromaBreathingModal';
 
 export const WearablesScreen: React.FC = () => {
@@ -11,7 +11,7 @@ export const WearablesScreen: React.FC = () => {
   const [impactHistory, setImpactHistory] = useState<BioImpactRecord[]>(wearableService.getImpactHistory());
   const [isSyncing, setIsSyncing] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState<WearableBrand>(device.brand);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   // Breathing Modal State
   const [isBreathingModalOpen, setIsBreathingModalOpen] = useState(false);
@@ -28,30 +28,65 @@ export const WearablesScreen: React.FC = () => {
   };
 
   const handleSyncNow = () => {
+    if (!device.connected) {
+      setActionFeedback('Часы не подключены. Нажмите "Подключить" ниже.');
+      setTimeout(() => setActionFeedback(null), 3000);
+      return;
+    }
+
     setIsSyncing(true);
     setTimeout(() => {
       const updatedMetrics = wearableService.syncMetrics();
       setMetrics(updatedMetrics);
       setDevice(wearableService.getDevice());
       setIsSyncing(false);
+      setActionFeedback('Данные биомаркеров успешно обновлены');
+      setTimeout(() => setActionFeedback(null), 3000);
     }, 1200);
   };
 
-  const handleConnectBrand = (brand: WearableBrand) => {
-    const newDev = wearableService.connectDevice(brand);
-    setDevice(newDev);
-    setSelectedBrand(brand);
+  const handleSelectBrandWithMode = (brand: WearableBrand, mode: ConnectionMode) => {
+    if (mode === 'demo') {
+      wearableService.connectDevice(brand, 'demo');
+      wearableService.enableDemoMode();
+      setActionFeedback('Активирован Демо-режим (симуляция данных)');
+    } else if (mode === 'web_bluetooth') {
+      wearableService.connectDevice(brand, 'web_bluetooth');
+      handleBluetoothScan();
+    } else {
+      wearableService.connectDevice(brand, 'health_connect');
+      setActionFeedback('Режим Health Connect выбран. Ожидание отклика от приложения часов.');
+    }
     setShowConnectModal(false);
     refreshData();
+    setTimeout(() => setActionFeedback(null), 4000);
+  };
+
+  const handleBluetoothScan = async () => {
+    setActionFeedback('Сканирование Bluetooth устройств рядом...');
+    const result = await wearableService.connectRealBluetooth();
+    setActionFeedback(result.message);
+    refreshData();
+    setTimeout(() => setActionFeedback(null), 4000);
+  };
+
+  const handleEnableDemoMode = () => {
+    wearableService.enableDemoMode();
+    refreshData();
+    setShowConnectModal(false);
+    setActionFeedback('Включен Демо-режим для симуляции биомаркеров');
+    setTimeout(() => setActionFeedback(null), 3000);
   };
 
   const handleToggleDisconnect = () => {
     if (device.connected) {
       wearableService.disconnectDevice();
+      setActionFeedback('Устройство отключено');
     } else {
-      wearableService.connectDevice(device.brand);
+      setShowConnectModal(true);
     }
     refreshData();
+    setTimeout(() => setActionFeedback(null), 3000);
   };
 
   const recommendation: AromaBioRecommendation = wearableService.getAromaRecommendation(metrics);
@@ -62,7 +97,6 @@ export const WearablesScreen: React.FC = () => {
   };
 
   const handleBreathingFinished = () => {
-    // Record measurable improvement from practice
     const beforeStress = metrics.stressLevel;
     const afterStress = Math.max(25, beforeStress - Math.floor(Math.random() * 18 + 12));
     const beforeHR = metrics.heartRate;
@@ -73,13 +107,12 @@ export const WearablesScreen: React.FC = () => {
     setIsBreathingModalOpen(false);
   };
 
-  const brandsList: { id: WearableBrand; name: string; icon: string; description: string; popular?: boolean }[] = [
-    { id: 'xiaomi', name: 'Xiaomi / Mi Fitness / Zepp', icon: 'watch', description: 'Xiaomi Watch S1, Redmi Watch, Smart Band', popular: true },
-    { id: 'google', name: 'Google Health Connect', icon: 'health_and_safety', description: 'Единая синхронизация Android Health', popular: true },
-    { id: 'apple', name: 'Apple Health (iOS)', icon: 'favorite', description: 'Apple Watch & Zapp', popular: true },
-    { id: 'huawei', name: 'Huawei Health', icon: 'watch_later', description: 'Huawei Watch GT / Band', popular: false },
-    { id: 'samsung', name: 'Samsung Health', icon: 'vital_signs', description: 'Galaxy Watch 4 / 5 / 6', popular: false },
-    { id: 'bluetooth', name: 'Bluetooth HR Sensor', icon: 'bluetooth', description: 'Прямой нагрудный пульсометр BLE', popular: false },
+  const brandsList: { id: WearableBrand; name: string; icon: string; description: string }[] = [
+    { id: 'xiaomi', name: 'Xiaomi / Mi Fitness / Zepp', icon: 'watch', description: 'Xiaomi Watch S1, Redmi Watch, Smart Band' },
+    { id: 'google', name: 'Google Health Connect', icon: 'health_and_safety', description: 'Единая синхронизация Android Health' },
+    { id: 'apple', name: 'Apple Health (iOS)', icon: 'favorite', description: 'Apple Watch & HealthKit' },
+    { id: 'samsung', name: 'Samsung Health', icon: 'vital_signs', description: 'Galaxy Watch 4 / 5 / 6' },
+    { id: 'bluetooth', name: 'Bluetooth BLE Sensor', icon: 'bluetooth', description: 'Прямой нагрудный пульсометр по Bluetooth' },
   ];
 
   const getStressColor = (stress: number) => {
@@ -107,7 +140,7 @@ export const WearablesScreen: React.FC = () => {
               <span className="material-symbols-outlined text-primary text-xl">watch</span>
               Смарт-часы & Гаджеты
             </h1>
-            <p className="text-xs text-sage dark:text-gray-400">Биометрическая биообратная связь</p>
+            <p className="text-xs text-sage dark:text-gray-400">Биометрическая интеграция</p>
           </div>
 
           <button 
@@ -121,6 +154,13 @@ export const WearablesScreen: React.FC = () => {
             </span>
           </button>
         </div>
+
+        {/* Feedback Message Toast */}
+        {actionFeedback && (
+          <div className="mt-3 p-2.5 rounded-xl bg-forest dark:bg-primary/20 text-white dark:text-primary text-xs text-center font-medium animate-fade-in shadow-md">
+            {actionFeedback}
+          </div>
+        )}
       </header>
 
       <main className="px-6 py-6 space-y-6">
@@ -132,22 +172,26 @@ export const WearablesScreen: React.FC = () => {
                 <span className="material-symbols-outlined text-3xl">watch</span>
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-extrabold text-forest dark:text-white">
-                    {device.connected ? device.name : 'Гаджет не подключен'}
-                  </h2>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
+                <h2 className="text-base font-extrabold text-forest dark:text-white">
+                  {device.name}
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
                   <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    device.connected ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-gray-200 text-gray-600'
+                    device.connected 
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                      : 'bg-gray-200 text-gray-600 dark:bg-white/10 dark:text-gray-400'
                   }`}>
                     <span className={`size-1.5 rounded-full ${device.connected ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
                     {device.connected ? 'Подключено' : 'Отключено'}
                   </span>
+
                   {device.connected && (
-                    <span className="text-xs text-sage dark:text-gray-400 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">battery_charging_full</span>
-                      {device.batteryLevel}%
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      device.connectionMode === 'demo'
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                        : 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20'
+                    }`}>
+                      {device.connectionMode === 'demo' ? '🟡 Демо-симуляция' : '🟢 Live Health Sync'}
                     </span>
                   )}
                 </div>
@@ -156,160 +200,195 @@ export const WearablesScreen: React.FC = () => {
 
             <button
               onClick={() => setShowConnectModal(true)}
-              className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-white/10 text-forest dark:text-white text-xs font-bold hover:bg-primary/20 active:scale-95 transition-all"
+              className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-white/10 text-forest dark:text-white text-xs font-bold hover:bg-primary/20 active:scale-95 transition-all shrink-0"
             >
-              Сменить
+              Настроить
             </button>
           </div>
 
+          {/* Device status detail message */}
+          <div className="mt-3 p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-white/5 text-xs text-sage dark:text-gray-300">
+            <span className="font-semibold text-forest dark:text-white">Статус: </span>
+            {device.statusMessage || (device.connected ? 'Синхронизация активна' : 'Ожидает подключения')}
+          </div>
+
           {/* Sync status footer */}
-          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/10 flex items-center justify-between text-xs text-sage dark:text-gray-400">
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-white/10 flex items-center justify-between text-xs text-sage dark:text-gray-400">
             <span>
               {device.lastSyncedAt 
-                ? `Последняя синхронизация: ${new Date(device.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                : 'Еще не синхронизировано'}
+                ? `Синхронизировано: ${new Date(device.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                : 'Нет данных с часов'}
             </span>
 
             <button 
               onClick={handleToggleDisconnect}
-              className="text-xs text-red-500 hover:underline font-medium"
+              className="text-xs text-red-500 hover:underline font-bold"
             >
               {device.connected ? 'Отключить' : 'Подключить'}
             </button>
           </div>
         </div>
 
-        {/* Biometrics Dashboard Grid */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base font-bold text-forest dark:text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-lg">monitoring</span>
-              Текущие биомаркеры организма
-            </h3>
-            <span className="text-xs text-sage dark:text-gray-400">Данные с часов</span>
+        {/* Biometrics Dashboard Grid or Disconnected Prompt */}
+        {device.connected ? (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-forest dark:text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-lg">monitoring</span>
+                Текущие биомаркеры
+              </h3>
+              <span className="text-xs text-sage dark:text-gray-400">
+                {device.connectionMode === 'demo' ? 'Демо-данные' : 'С часов'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {/* Heart Rate */}
+              <div className="bg-white dark:bg-[#1a2d18]/50 p-4 rounded-2xl border border-sage/20 dark:border-white/10 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-sage dark:text-gray-400">Пульс (ЧСС)</span>
+                  <span className="material-symbols-outlined text-red-500 text-lg animate-pulse">favorite</span>
+                </div>
+                <div className="my-2">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-extrabold text-forest dark:text-white">{metrics.heartRate}</span>
+                    <span className="text-xs text-sage dark:text-gray-400">уд/мин</span>
+                  </div>
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
+                    {metrics.heartRate < 80 ? 'В покое (Норма)' : 'Повышенный ритм'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Stress Level */}
+              <div className="bg-white dark:bg-[#1a2d18]/50 p-4 rounded-2xl border border-sage/20 dark:border-white/10 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-sage dark:text-gray-400">Стресс</span>
+                  <span className={`material-symbols-outlined text-lg ${stressColor.text}`}>psychology</span>
+                </div>
+                <div className="my-2">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-extrabold text-forest dark:text-white">{metrics.stressLevel}%</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${stressColor.border} bg-gray-50 dark:bg-black/30 ${stressColor.text}`}>
+                      {stressColor.label}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-white/10 h-1.5 rounded-full overflow-hidden mt-1.5">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${stressColor.bg}`} 
+                      style={{ width: `${metrics.stressLevel}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* HRV */}
+              <div className="bg-white dark:bg-[#1a2d18]/50 p-4 rounded-2xl border border-sage/20 dark:border-white/10 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-sage dark:text-gray-400">ВСР (HRV)</span>
+                  <span className="material-symbols-outlined text-sky-500 text-lg">graphic_eq</span>
+                </div>
+                <div className="my-2">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-extrabold text-forest dark:text-white">{metrics.hrv}</span>
+                    <span className="text-xs text-sage dark:text-gray-400">мс</span>
+                  </div>
+                  <p className="text-[10px] text-sage dark:text-gray-400 font-medium mt-0.5">
+                    Вариабельность ритма
+                  </p>
+                </div>
+              </div>
+
+              {/* Sleep */}
+              <div className="bg-white dark:bg-[#1a2d18]/50 p-4 rounded-2xl border border-sage/20 dark:border-white/10 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-sage dark:text-gray-400">Сон</span>
+                  <span className="material-symbols-outlined text-indigo-400 text-lg">bedtime</span>
+                </div>
+                <div className="my-2">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-extrabold text-forest dark:text-white">{metrics.sleepHours}</span>
+                    <span className="text-xs text-sage dark:text-gray-400">ч</span>
+                  </div>
+                  <p className="text-[10px] text-indigo-500 font-bold mt-0.5">
+                    Индекс {metrics.sleepScore}/100
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* Heart Rate */}
-            <div className="bg-white dark:bg-[#1a2d18]/50 p-4 rounded-2xl border border-sage/20 dark:border-white/10 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-sage dark:text-gray-400">Пульс (ЧСС)</span>
-                <span className="material-symbols-outlined text-red-500 text-lg animate-pulse">favorite</span>
-              </div>
-              <div className="my-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-extrabold text-forest dark:text-white">{metrics.heartRate}</span>
-                  <span className="text-xs text-sage dark:text-gray-400">уд/мин</span>
-                </div>
-                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
-                  {metrics.heartRate < 80 ? 'В покое (Норма)' : 'Повышенный ритм'}
-                </p>
-              </div>
+        ) : (
+          <div className="p-6 bg-white dark:bg-[#1a2d18]/50 rounded-3xl border border-sage/20 dark:border-white/10 text-center space-y-3">
+            <div className="size-12 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+              <span className="material-symbols-outlined text-2xl">watch_off</span>
             </div>
-
-            {/* Stress Level */}
-            <div className="bg-white dark:bg-[#1a2d18]/50 p-4 rounded-2xl border border-sage/20 dark:border-white/10 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-sage dark:text-gray-400">Стресс</span>
-                <span className={`material-symbols-outlined text-lg ${stressColor.text}`}>psychology</span>
-              </div>
-              <div className="my-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-extrabold text-forest dark:text-white">{metrics.stressLevel}%</span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${stressColor.border} bg-gray-50 dark:bg-black/30 ${stressColor.text}`}>
-                    {stressColor.label}
-                  </span>
-                </div>
-                {/* Visual Stress Scale Bar */}
-                <div className="w-full bg-gray-200 dark:bg-white/10 h-1.5 rounded-full overflow-hidden mt-1.5">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-500 ${stressColor.bg}`} 
-                    style={{ width: `${metrics.stressLevel}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-
-            {/* HRV */}
-            <div className="bg-white dark:bg-[#1a2d18]/50 p-4 rounded-2xl border border-sage/20 dark:border-white/10 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-sage dark:text-gray-400">ВСР (HRV)</span>
-                <span className="material-symbols-outlined text-sky-500 text-lg">graphic_eq</span>
-              </div>
-              <div className="my-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-extrabold text-forest dark:text-white">{metrics.hrv}</span>
-                  <span className="text-xs text-sage dark:text-gray-400">мс</span>
-                </div>
-                <p className="text-[10px] text-sage dark:text-gray-400 font-medium mt-0.5">
-                  Вариабельность ритма
-                </p>
-              </div>
-            </div>
-
-            {/* Sleep */}
-            <div className="bg-white dark:bg-[#1a2d18]/50 p-4 rounded-2xl border border-sage/20 dark:border-white/10 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-sage dark:text-gray-400">Сон</span>
-                <span className="material-symbols-outlined text-indigo-400 text-lg">bedtime</span>
-              </div>
-              <div className="my-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-extrabold text-forest dark:text-white">{metrics.sleepHours}</span>
-                  <span className="text-xs text-sage dark:text-gray-400">ч</span>
-                </div>
-                <p className="text-[10px] text-indigo-500 font-bold mt-0.5">
-                  Индекс {metrics.sleepScore}/100
-                </p>
-              </div>
+            <h3 className="text-sm font-bold text-forest dark:text-white">Часы не подключены</h3>
+            <p className="text-xs text-sage dark:text-gray-300 max-w-xs mx-auto leading-relaxed">
+              Чтобы данные пульса и стресса считывались автоматически, подключите авторизацию в Google Health Connect / Mi Fitness или включите Демо-симуляцию.
+            </p>
+            <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
+              <button
+                onClick={() => setShowConnectModal(true)}
+                className="px-4 py-2.5 rounded-xl bg-primary text-forest text-xs font-bold shadow-sm hover:bg-primary/90"
+              >
+                Подключить устройство
+              </button>
+              <button
+                onClick={handleEnableDemoMode}
+                className="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-white/10 text-forest dark:text-white text-xs font-bold hover:bg-gray-200"
+              >
+                Включить Демо-режим
+              </button>
             </div>
           </div>
-        </div>
+        )}
 
         {/* AI Biofeedback Recommendation Section */}
-        <div className="bg-gradient-to-br from-primary/15 via-white to-primary/5 dark:from-primary/20 dark:via-[#1a2d18] dark:to-[#0f1f0e] rounded-3xl p-5 border border-primary/30 shadow-md space-y-4">
-          <div className="flex items-center gap-2 text-forest dark:text-white">
-            <div className="size-8 rounded-full bg-primary text-forest flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-lg">auto_awesome</span>
-            </div>
-            <div>
-              <h3 className="text-sm font-extrabold uppercase tracking-wide text-forest dark:text-primary">
-                ИИ-БиоаромаАнализ
-              </h3>
-              <p className="text-xs font-semibold text-forest dark:text-white">
-                {recommendation.title}
-              </p>
-            </div>
-          </div>
-
-          <p className="text-xs text-forest/90 dark:text-gray-200 leading-relaxed bg-white/60 dark:bg-black/30 p-3 rounded-2xl border border-primary/20">
-            {recommendation.reasoning}
-          </p>
-
-          <div className="p-3 bg-white/80 dark:bg-black/40 rounded-2xl border border-primary/20 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-forest dark:text-primary flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">spa</span>
-                Рекомендуемое масло:
-              </span>
-              <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-forest dark:text-primary">
-                {recommendation.primaryOil}
-              </span>
+        {device.connected && (
+          <div className="bg-gradient-to-br from-primary/15 via-white to-primary/5 dark:from-primary/20 dark:via-[#1a2d18] dark:to-[#0f1f0e] rounded-3xl p-5 border border-primary/30 shadow-md space-y-4">
+            <div className="flex items-center gap-2 text-forest dark:text-white">
+              <div className="size-8 rounded-full bg-primary text-forest flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-lg">auto_awesome</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold uppercase tracking-wide text-forest dark:text-primary">
+                  ИИ-БиоаромаАнализ
+                </h3>
+                <p className="text-xs font-semibold text-forest dark:text-white">
+                  {recommendation.title}
+                </p>
+              </div>
             </div>
 
-            <p className="text-xs text-sage dark:text-gray-300">
-              {recommendation.breathingTechnique}
+            <p className="text-xs text-forest/90 dark:text-gray-200 leading-relaxed bg-white/60 dark:bg-black/30 p-3 rounded-2xl border border-primary/20">
+              {recommendation.reasoning}
             </p>
 
-            <button
-              onClick={() => startBreathingWithOil(recommendation.primaryOil)}
-              className="w-full mt-2 bg-primary hover:bg-primary/90 text-forest font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-            >
-              <span className="material-symbols-outlined text-lg">air</span>
-              Запустить био-дыхание ({recommendation.recommendedDurationMinutes} мин)
-            </button>
+            <div className="p-3 bg-white/80 dark:bg-black/40 rounded-2xl border border-primary/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-forest dark:text-primary flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">spa</span>
+                  Рекомендуемое масло:
+                </span>
+                <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-forest dark:text-primary">
+                  {recommendation.primaryOil}
+                </span>
+              </div>
+
+              <p className="text-xs text-sage dark:text-gray-300">
+                {recommendation.breathingTechnique}
+              </p>
+
+              <button
+                onClick={() => startBreathingWithOil(recommendation.primaryOil)}
+                className="w-full mt-2 bg-primary hover:bg-primary/90 text-forest font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+              >
+                <span className="material-symbols-outlined text-lg">air</span>
+                Запустить био-дыхание ({recommendation.recommendedDurationMinutes} мин)
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Bio-Impact Recovery History */}
         <div>
@@ -372,10 +451,10 @@ export const WearablesScreen: React.FC = () => {
       {showConnectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-[#1a2d18] w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-white/20 relative">
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-white/10">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-white/10">
               <h3 className="text-base font-extrabold text-forest dark:text-white flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">watch</span>
-                Выберите экосистему часов
+                Подключение смарт-часов
               </h3>
               <button 
                 onClick={() => setShowConnectModal(false)}
@@ -385,27 +464,62 @@ export const WearablesScreen: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
-              {brandsList.map((brand) => (
-                <button
-                  key={brand.id}
-                  onClick={() => handleConnectBrand(brand.id)}
-                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all ${
-                    device.brand === brand.id && device.connected
-                      ? 'border-primary bg-primary/10 dark:bg-primary/20'
-                      : 'border-sage/20 dark:border-white/10 bg-gray-50 dark:bg-black/20 hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary text-xl">{brand.icon}</span>
-                    <div>
-                      <p className="text-xs font-bold text-forest dark:text-white">{brand.name}</p>
-                      <p className="text-[10px] text-sage dark:text-gray-400">{brand.description}</p>
-                    </div>
+            <p className="text-xs text-sage dark:text-gray-300 mb-4 leading-relaxed">
+              Выберите тип синхронизации для считывания пульса и уровня стресса:
+            </p>
+
+            <div className="space-y-3">
+              {/* Option 1: Health Connect */}
+              <div className="p-3.5 rounded-2xl border border-sage/20 dark:border-white/10 bg-gray-50 dark:bg-black/20 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-emerald-500 text-xl">health_and_safety</span>
+                  <div>
+                    <p className="text-xs font-bold text-forest dark:text-white">Google Health Connect / Mi Fitness</p>
+                    <p className="text-[10px] text-sage dark:text-gray-400">Для Xiaomi S1, Samsung, Pixel Watch</p>
                   </div>
-                  <span className="material-symbols-outlined text-sage text-sm">chevron_right</span>
-                </button>
-              ))}
+                </div>
+                <div className="flex gap-2 pt-1">
+                  {brandsList.slice(0, 3).map((brand) => (
+                    <button
+                      key={brand.id}
+                      onClick={() => handleSelectBrandWithMode(brand.id, 'health_connect')}
+                      className="px-2.5 py-1 rounded-lg bg-primary/10 dark:bg-primary/20 text-forest dark:text-primary text-[10px] font-bold hover:bg-primary/30"
+                    >
+                      {brand.id === 'xiaomi' ? 'Xiaomi S1' : brand.id === 'google' ? 'Google' : 'Apple'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Option 2: Web Bluetooth */}
+              <button
+                onClick={handleBluetoothScan}
+                className="w-full p-3.5 rounded-2xl border border-sage/20 dark:border-white/10 bg-gray-50 dark:bg-black/20 text-left flex items-center justify-between hover:bg-gray-100"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-sky-500 text-xl">bluetooth_searching</span>
+                  <div>
+                    <p className="text-xs font-bold text-forest dark:text-white">Сканировать Bluetooth (BLE)</p>
+                    <p className="text-[10px] text-sage dark:text-gray-400">Прямое подключение к HR-датчику</p>
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-sage text-sm">chevron_right</span>
+              </button>
+
+              {/* Option 3: Demo Mode */}
+              <button
+                onClick={handleEnableDemoMode}
+                className="w-full p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-left flex items-center justify-between hover:bg-amber-500/20"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-amber-500 text-xl">science</span>
+                  <div>
+                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400">Включить Демо-симуляцию</p>
+                    <p className="text-[10px] text-sage dark:text-gray-300">Тестирование алгоритмов без часов</p>
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-amber-500 text-sm">play_arrow</span>
+              </button>
             </div>
           </div>
         </div>

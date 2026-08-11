@@ -11,16 +11,20 @@ export interface BiometricsData {
 
 export type WearableBrand = 'xiaomi' | 'apple' | 'google' | 'huawei' | 'samsung' | 'bluetooth';
 
+export type ConnectionMode = 'health_connect' | 'web_bluetooth' | 'demo';
+
 export interface WearableDevice {
   id: string;
   brand: WearableBrand;
   name: string;
   connected: boolean;
+  connectionMode: ConnectionMode;
   batteryLevel: number;
   lastSyncedAt: number | null;
   autoSync: boolean;
   stressAlertEnabled: boolean;
   stressThreshold: number; // e.g. 65%
+  statusMessage?: string;
 }
 
 export interface AromaBioRecommendation {
@@ -53,12 +57,14 @@ const DEFAULT_DEVICE: WearableDevice = {
   id: 'dev_xiaomi_s1',
   brand: 'xiaomi',
   name: 'Xiaomi Watch S1 Active',
-  connected: true,
+  connected: false,
+  connectionMode: 'health_connect',
   batteryLevel: 84,
-  lastSyncedAt: Date.now() - 12 * 60 * 1000, // 12 mins ago
+  lastSyncedAt: null,
   autoSync: true,
   stressAlertEnabled: true,
   stressThreshold: 65,
+  statusMessage: 'Ожидает авторизации в Google Health Connect / Mi Fitness',
 };
 
 const DEFAULT_METRICS: BiometricsData = {
@@ -156,7 +162,7 @@ class WearableService {
     localStorage.setItem(STORAGE_KEY_METRICS, JSON.stringify(metrics));
   }
 
-  public connectDevice(brand: WearableBrand, customName?: string): WearableDevice {
+  public connectDevice(brand: WearableBrand, mode: ConnectionMode = 'health_connect', customName?: string): WearableDevice {
     const brandNames: Record<WearableBrand, string> = {
       xiaomi: 'Xiaomi Watch S1 Active',
       apple: 'Apple Watch Series 9',
@@ -166,25 +172,79 @@ class WearableService {
       bluetooth: 'Bluetooth HR Sensor',
     };
 
+    const isConnected = mode === 'demo';
+    const statusMsg = mode === 'demo'
+      ? 'Демо-режим (эмуляция для тестирования)'
+      : mode === 'web_bluetooth'
+      ? 'Поиск Bluetooth смарт-часов...'
+      : `Ожидает синхронизации с ${brandNames[brand] || 'часами'}`;
+
     const newDevice: WearableDevice = {
       id: `dev_${brand}_${Date.now()}`,
       brand,
       name: customName || brandNames[brand] || 'Смарт-часы',
-      connected: true,
-      batteryLevel: Math.floor(Math.random() * 30) + 70, // 70-99%
-      lastSyncedAt: Date.now(),
+      connected: isConnected,
+      connectionMode: mode,
+      batteryLevel: isConnected ? 88 : 0,
+      lastSyncedAt: isConnected ? Date.now() : null,
       autoSync: true,
       stressAlertEnabled: true,
       stressThreshold: 65,
+      statusMessage: statusMsg,
     };
 
     this.saveDevice(newDevice);
-    this.syncMetrics();
+    if (isConnected) {
+      this.syncMetrics();
+    }
     return newDevice;
+  }
+
+  public async connectRealBluetooth(): Promise<{ success: boolean; message: string }> {
+    if (typeof navigator !== 'undefined' && 'bluetooth' in navigator) {
+      try {
+        const device = await (navigator as any).bluetooth.requestDevice({
+          filters: [{ services: ['heart_rate'] }],
+          optionalServices: ['battery_service']
+        });
+        
+        this.device.connected = true;
+        this.device.connectionMode = 'web_bluetooth';
+        this.device.name = device.name || 'Bluetooth Heart Rate Monitor';
+        this.device.lastSyncedAt = Date.now();
+        this.device.statusMessage = 'Подключено по Web Bluetooth API (прямое соединение)';
+        this.saveDevice(this.device);
+        this.syncMetrics();
+        return { success: true, message: `Подключено устройство: ${this.device.name}` };
+      } catch (err: any) {
+        console.warn('[WearableService] Bluetooth connection error/cancel:', err);
+        return { 
+          success: false, 
+          message: err?.message || 'Сканирование Bluetooth отменено или устройство не найдено.' 
+        };
+      }
+    } else {
+      return {
+        success: false,
+        message: 'Ваш браузер или текущее окружение не поддерживает прямое Web Bluetooth соединение. Для подключения Xiaomi Watch S1 используйте Health Connect на Android.'
+      };
+    }
+  }
+
+  public enableDemoMode(): WearableDevice {
+    this.device.connected = true;
+    this.device.connectionMode = 'demo';
+    this.device.batteryLevel = 85;
+    this.device.statusMessage = 'Демо-эмуляция (для тестирования рекомендаций)';
+    this.saveDevice(this.device);
+    this.syncMetrics();
+    return { ...this.device };
   }
 
   public disconnectDevice(): void {
     this.device.connected = false;
+    this.device.lastSyncedAt = null;
+    this.device.statusMessage = 'Отключено пользователем';
     this.saveDevice(this.device);
   }
 

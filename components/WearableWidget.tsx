@@ -58,8 +58,17 @@ export const WearableWidget: React.FC<WearableWidgetProps> = ({ onStartBreathing
                 <span className="inline-block size-2 rounded-full bg-emerald-500 animate-pulse" title="Подключено"></span>
               )}
             </div>
-            <p className="text-[10px] text-sage dark:text-gray-400">
-              {device.connected ? `Батарея: ${device.batteryLevel}%` : 'Нажмите для подключения'}
+            <p className="text-[10px] text-sage dark:text-gray-400 flex items-center gap-1">
+              {device.connected ? (
+                <>
+                  <span className={`inline-block size-1.5 rounded-full ${
+                    device.connectionMode === 'demo' ? 'bg-amber-400' : 'bg-emerald-500'
+                  }`}></span>
+                  {device.connectionMode === 'demo' ? 'Демо-режим' : `Батарея: ${device.batteryLevel}%`}
+                </>
+              ) : (
+                'Нажмите для подключения'
+              )}
             </p>
           </div>
         </div>

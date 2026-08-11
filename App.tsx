@@ -26,7 +26,6 @@ import AdminCardsScreen from './screens/AdminCardsScreen';
 import CartScreen from './screens/CartScreen';
 import SymbolsDictionaryScreen from './screens/SymbolsDictionaryScreen';
 import LegalScreen from './screens/LegalScreen';
-import WearablesScreen from './screens/WearablesScreen';
 import { myTrackerService } from './services/myTrackerService';
 
 const BackButtonHandler: React.FC = () => {
@@ -172,7 +171,6 @@ const AppRoutes: React.FC = () => {
             <Route path="/admin-cards" element={<AdminCardsScreen />} />
             <Route path="/symbols-dictionary" element={<SymbolsDictionaryScreen />} />
             <Route path="/verify-email" element={<VerifyEmailScreen />} />
-            <Route path="/wearables" element={<WearablesScreen />} />
             <Route path="*" element={<Navigate to="/" />} />
           </>
         ) : (
