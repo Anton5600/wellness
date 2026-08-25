@@ -24,7 +24,7 @@ const QuizResultScreen: React.FC = () => {
 
     useEffect(() => {
         if (result && !fromHistory) {
-            myTrackerService.trackQuizComplete(result.name, result.oils);
+            myTrackerService.trackQuizComplete(result.title, result.oils.map((o) => o.name));
         }
     }, [result, fromHistory]);
 

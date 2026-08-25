@@ -12,6 +12,7 @@ export interface OilCatalogItem {
   name: string;
   description: string;
   icon: string;
+  price?: number; // Цена в рублях
 }
 
 export interface UserOil {
@@ -55,4 +56,78 @@ export interface EmotionHistoryEntry {
   userId: string;
   timestamp: number;
   emotionKey: EmotionKey;
+}
+
+// --- Плутчик-модель (ядро рекомендации) ---
+
+export type PlutchikVector = Record<EmotionKey, number>;
+
+export type EveningFeedback = 'better' | 'same' | 'worse';
+
+export interface CompassSettings {
+  morningPushTime: string;
+  eveningPushTime: string;
+  preferredInput: 'tap' | 'voice';
+  timezone: string;
+}
+
+export interface PlutchikProfile {
+  baseline: PlutchikVector;
+  lastWeekly: PlutchikVector;
+  trends: Record<EmotionKey, string>;
+  lastWeeklyDate: string;
+}
+
+export interface StreakInfo {
+  current: number;
+  longest: number;
+  lastActiveDate: string;
+}
+
+export interface EmotionalGraphEntry {
+  date: string;
+  timestamp: number;
+  microInput: string;
+  inputType: 'tap' | 'voice';
+  plutchikInferred: PlutchikVector;
+  dominant: EmotionKey;
+  aroma: string;
+  aromaReason: string;
+  insight: string;
+  breathingDone: boolean;
+  breathingPattern: string;
+  stuckFlag: boolean;
+  eveningFeedback?: EveningFeedback;
+}
+
+export interface UnlockedFeatures {
+  morningRitual: boolean;
+  eveningCheckin: boolean;
+  mapDay: boolean;
+  weeklyCheck: boolean;
+  cards: boolean;
+  patterns: boolean;
+  catalog: boolean;
+  exportPdf: boolean;
+}
+
+// --- Коммерция (магазин отложен, но типы нужны для компиляции) ---
+
+export interface CartItem {
+  oilId: string;
+  quantity: number;
+}
+
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+
+export interface Order {
+  id: string;
+  userId: string;
+  items: CartItem[];
+  totalAmount: number;
+  status: OrderStatus;
+  createdAt: number;
+  contactName: string;
+  contactPhone: string;
+  deliveryAddress: string;
 }
