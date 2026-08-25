@@ -252,3 +252,7 @@ export const OIL_DATABASE: OilEntry[] = [
 /** Поиск масла по id; undefined, если не найдено (движок сам решает фолбэк). */
 export const findOilById = (id: string): OilEntry | undefined =>
   OIL_DATABASE.find((o) => o.id === id);
+
+/** Поиск масла по отображаемому имени (без учёта регистра). */
+export const findOilByName = (name: string): OilEntry | undefined =>
+  OIL_DATABASE.find((o) => o.name.toLowerCase() === name.toLowerCase());
