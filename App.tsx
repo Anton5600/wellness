@@ -33,20 +33,35 @@ const BackButtonHandler: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const handleBackButton = ({ canGoBack }: { canGoBack: boolean }) => {
-      // Exit the app if we are on root paths
+    let removeListener: (() => void) | null = null;
+
+    const handleBackButton = () => {
       if (location.pathname === '/' || location.pathname === '/signin' || location.pathname === '/onboarding') {
-        CapacitorApp.exitApp();
+        try {
+          CapacitorApp.exitApp();
+        } catch {}
       } else {
-        // Otherwise navigate back
         navigate(-1);
       }
     };
 
-    const listenerPromise = CapacitorApp.addListener('backButton', handleBackButton);
+    try {
+      if (CapacitorApp && typeof CapacitorApp.addListener === 'function') {
+        const res = CapacitorApp.addListener('backButton', handleBackButton);
+        if (res && typeof res.then === 'function') {
+          res.then((listener) => {
+            if (listener && typeof listener.remove === 'function') {
+              removeListener = () => listener.remove();
+            }
+          }).catch(() => {});
+        }
+      }
+    } catch {}
 
     return () => {
-      listenerPromise.then(listener => listener.remove());
+      if (removeListener) {
+        removeListener();
+      }
     };
   }, [navigate, location.pathname]);
 

@@ -515,11 +515,6 @@ async function startServer() {
         return res.status(400).json({ error: "Missing test result or card" });
       }
 
-      const apiKey = process.env.DEEPSEEK_API_KEY;
-      if (!apiKey) {
-        return res.status(400).json({ error: "DEEPSEEK_API_KEY is not configured" });
-      }
-
       const prompt = `Ты - эмпатичный и мудрый персональный советник (ассистент) в приложении для психологической поддержки "Внутренний компас".
 Задача: Провести краткий, глубокий и вдохновляющий синтез между текущим состоянием пользователя (по результатам теста) и его Метафорической картой дня.
 
@@ -535,35 +530,73 @@ async function startServer() {
 2. Дай мягкий, поддерживающий совет на сегодняшний день.
 Твой тон должен быть теплым, заботливым, без лишней эзотерики, но с глубоким пониманием психологии. Обращайся на "ты". Не используй приветствия, сразу переходи к сути. Форматируй текст чисто (без markdown-звездочек, используй обычные абзацы).`;
 
-      const deepseekResponse = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: process.env.DEEPSEEK_MODEL || "deepseek-chat",
-          messages: [{ role: "user", content: prompt }]
-        }),
-      });
+      let synthesisText = "";
 
-      if (!deepseekResponse.ok) {
-        const errorData = await deepseekResponse.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `HTTP error ${deepseekResponse.status}`);
+      // 1. Try DeepSeek API if available
+      const deepseekKey = process.env.DEEPSEEK_API_KEY;
+      if (deepseekKey) {
+        try {
+          const deepseekResponse = await fetch("https://api.deepseek.com/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${deepseekKey}`,
+            },
+            body: JSON.stringify({
+              model: process.env.DEEPSEEK_MODEL || "deepseek-chat",
+              messages: [{ role: "user", content: prompt }]
+            }),
+          });
+          if (deepseekResponse.ok) {
+            const responseData = await deepseekResponse.json();
+            synthesisText = responseData.choices?.[0]?.message?.content || "";
+          }
+        } catch (err) {
+          console.warn("DeepSeek synthesis failed, trying fallback...", err);
+        }
       }
 
-      const responseData = await deepseekResponse.json();
-      const synthesisText = responseData.choices?.[0]?.message?.content || "";
+      // 2. Try Gemini API if text is still empty and GEMINI_API_KEY is available
+      const geminiKey = process.env.GEMINI_API_KEY;
+      if (!synthesisText && geminiKey) {
+        try {
+          const ai = new GoogleGenAI({ apiKey: geminiKey });
+          const modelsToTry = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"];
+          for (const m of modelsToTry) {
+            try {
+              const resGen = await ai.models.generateContent({
+                model: m,
+                contents: prompt
+              });
+              if (resGen.text) {
+                synthesisText = resGen.text;
+                break;
+              }
+            } catch (mErr) {
+              console.warn(`Gemini model ${m} failed:`, mErr);
+            }
+          }
+        } catch (err) {
+          console.warn("Gemini synthesis failed, using local generator...", err);
+        }
+      }
+
+      // 3. Fallback generator if AI APIs are not available or failed
+      if (!synthesisText) {
+        synthesisText = `Ваше текущее состояние «${testResult.title}» перекликается с картой дня «${card.title}».\n\n` +
+          `Карта напоминает: «${card.message}». Когда мы проживаем эмоцию «${testResult.headline.toLowerCase()}», очень важно давать себе время осознать внутренние импульсы и не спешить с выводами.\n\n` +
+          `Позвольте себе сегодня побыть в контакте с собой. Сделайте глубокий вдох, используйте рекомендуемое аромамасло для гармонизации и прислушайтесь к вашему внутреннему компасу.`;
+      }
 
       res.json({ result: synthesisText });
     } catch (error: any) {
-      console.error("DeepSeek API Error details:", error?.message, error);
+      console.error("Synthesis error:", error);
       res.status(500).json({ error: "Failed to generate synthesis: " + (error?.message || "Unknown error") });
     }
   });
 
-  // Vite middleware for development (only loaded when NODE_ENV is explicitly 'development')
-  if (process.env.NODE_ENV === "development") {
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
