@@ -111,6 +111,28 @@ export interface UnlockedFeatures {
   exportPdf: boolean;
 }
 
+// --- Единая база масел (для правил рекомендации и LLM) ---
+
+export type EffectMode = 'awaken' | 'calm' | 'balance' | 'support';
+
+export type Chronotype = 'morning' | 'day' | 'evening';
+
+export interface OilEffect {
+  emotion: EmotionKey;
+  mode: EffectMode;
+}
+
+export interface OilEntry {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  effects: OilEffect[]; // на какие эмоции и как
+  chronotype: Chronotype[]; // утро/день/вечер
+  instruction: string; // «1 капля на ладони, 3 вдоха»
+  price?: number;
+}
+
 // --- Коммерция (магазин отложен, но типы нужны для компиляции) ---
 
 export interface CartItem {
