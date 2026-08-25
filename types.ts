@@ -92,6 +92,7 @@ export interface EmotionalGraphEntry {
   plutchikInferred: PlutchikVector;
   dominant: EmotionKey;
   aroma: string;
+  aromaId?: string;
   aromaReason: string;
   insight: string;
   breathingDone: boolean;

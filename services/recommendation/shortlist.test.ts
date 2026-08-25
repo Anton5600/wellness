@@ -64,4 +64,13 @@ describe('candidateShortlist', () => {
     const result = candidateShortlist({ vector: star, hour: 8, feedback: [], oilDb: OIL_DATABASE });
     expect(result.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('ранжирует выше масло, нацеленное на доминирующую эмоцию', () => {
+    const oils: OilEntry[] = [
+      { id: 'fear_balance', name: 'F', description: '', icon: '', effects: [{ emotion: 'fear', mode: 'balance' }], chronotype: ['morning'], instruction: '' },
+      { id: 'sad_balance', name: 'S', description: '', icon: '', effects: [{ emotion: 'sadness', mode: 'balance' }], chronotype: ['morning'], instruction: '' },
+    ];
+    const ids = candidateShortlist({ vector: crescent, hour: 8, feedback: [], dominant: 'fear', oilDb: oils }).map((o) => o.id);
+    expect(ids[0]).toBe('fear_balance');
+  });
 });
