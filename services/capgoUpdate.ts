@@ -49,7 +49,7 @@ export const performManualUpdate = async (zipUrl: string, versionId: string): Pr
     });
 
     console.log('[CapgoUpdate] Download complete. Activating update...');
-    await CapacitorUpdater.activate(version);
+    await CapacitorUpdater.set({ id: version.id });
     
     console.log('[CapgoUpdate] Activation complete. App will reload with the new version.');
   } catch (error) {
