@@ -56,6 +56,7 @@ const DashboardScreen: React.FC = () => {
   const [dailyCard, setDailyCard] = useState<MetaphoricCard | null>(null);
   
   const [synthesisText, setSynthesisText] = useState<string | null>(null);
+  const [synthesisError, setSynthesisError] = useState<string | null>(null);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [loadingPhrase, setLoadingPhrase] = useState(LOADING_PHRASES[0]);
 
@@ -162,6 +163,7 @@ const DashboardScreen: React.FC = () => {
   const handleSynthesis = async () => {
     if (!latestEmotion || !dailyCard) return;
     setIsSynthesizing(true);
+    setSynthesisError(null);
     
     // В веб-браузере используем относительный путь /api/ai/synthesis.
     // На мобильном устройстве (Capacitor native) исключаем локальные IP (10.0.2.2, localhost)
@@ -197,7 +199,7 @@ const DashboardScreen: React.FC = () => {
       try {
         fetchResult = await tryFetchSynthesis(primaryUrl);
       } catch (firstErr) {
-        if (primaryUrl !== 'https://wellness-anton56.amvera.io') {
+        if (primaryUrl && primaryUrl !== 'https://wellness-anton56.amvera.io') {
           console.warn(`Запрос на ${primaryUrl} не удался. Пробуем основной сервер...`);
           fetchResult = await tryFetchSynthesis('https://wellness-anton56.amvera.io');
         } else {
@@ -217,13 +219,13 @@ const DashboardScreen: React.FC = () => {
       }
       
       if (!res.ok || data.error) {
-        alert(data.error || "Произошла ошибка при синтезе.");
+        setSynthesisError(data.error || "Произошла ошибка при синтезе.");
       } else if (data.result) {
         setSynthesisText(data.result);
       }
     } catch (e: any) {
       console.error(e);
-      alert(`Ошибка сети при запросе синтеза. Детали: ${e.message || 'Проверьте интернет-соединение'}`);
+      setSynthesisError(`Ошибка сети: ${e.message || 'Проверьте соединение'}`);
     } finally {
       setIsSynthesizing(false);
     }
@@ -439,6 +441,11 @@ const DashboardScreen: React.FC = () => {
                             <p className="text-sm text-forest/80 dark:text-white/80 leading-relaxed mb-2">
                                 Нейросеть проанализирует ваше состояние («{latestEmotion.title}») и Карту дня («{dailyCard.title}»), чтобы дать персональный совет.
                             </p>
+                            {synthesisError && (
+                                <p className="text-xs text-red-500 font-medium my-1 bg-red-50 dark:bg-red-950/30 p-2 rounded-lg border border-red-200 dark:border-red-800/30">
+                                    {synthesisError}
+                                </p>
+                            )}
                             <button 
                                 onClick={handleSynthesis}
                                 disabled={isSynthesizing}
