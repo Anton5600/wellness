@@ -148,7 +148,7 @@ async function startServer() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
   }));
-  app.use(express.json());
+  app.use(express.json({ limit: "15mb" }));
 
   // Health check route
   app.get("/api/health", (req, res) => {
@@ -766,6 +766,47 @@ async function startServer() {
     } catch (error: any) {
       console.error("Recommendation error:", error);
       res.status(500).json({ error: "Failed to generate recommendation: " + (error?.message || "Unknown error") });
+    }
+  });
+
+  // STT (голос → текст). Провайдер — Yandex SpeechKit (sync :recognize).
+  // Ключ-гейтед: без YANDEX_SPEECHKIT_API_KEY возвращает 503, клиент показывает
+  // мягкую заглушку «голос недоступен». Аудио приходит base64 из MediaRecorder.
+  app.post("/api/stt", async (req, res) => {
+    try {
+      const { audioBase64, mimeType } = req.body || {};
+      if (!audioBase64 || typeof audioBase64 !== "string") {
+        return res.status(400).json({ error: "Missing audioBase64" });
+      }
+
+      const apiKey = process.env.YANDEX_SPEECHKIT_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ error: "STT not configured", configured: false });
+      }
+
+      const folderId = process.env.YANDEX_CLOUD_FOLDER_ID;
+      const audioBuffer = Buffer.from(audioBase64, "base64");
+
+      const response = await fetch("https://stt.api.cloud.yandex.net/speech/v1/stt:recognize", {
+        method: "POST",
+        headers: {
+          Authorization: `Api-Key ${apiKey}`,
+          ...(folderId ? { "x-folder-id": folderId } : {}),
+          "Content-Type": mimeType || "audio/ogg",
+        },
+        body: audioBuffer,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        console.error("SpeechKit error:", data);
+        return res.status(502).json({ error: "SpeechKit request failed", details: data });
+      }
+
+      res.json({ text: (data && typeof data.result === "string" ? data.result : "") || "" });
+    } catch (error: any) {
+      console.error("STT error:", error);
+      res.status(500).json({ error: "STT failed: " + (error?.message || "Unknown error") });
     }
   });
 

@@ -8,6 +8,7 @@ import { EMOTIONS } from '../constants';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { useUnlockedFeatures, FEATURE_DAYS } from '../hooks/useUnlockedFeatures';
 
 const ProgressScreen: React.FC = () => {
     const { user } = useAuth();
@@ -17,6 +18,8 @@ const ProgressScreen: React.FC = () => {
     const [exporting, setExporting] = useState(false);
     const navigate = useNavigate();
     const chartRef = useRef<HTMLDivElement>(null);
+    const { features, streak } = useUnlockedFeatures();
+    const pdfUnlocked = features?.exportPdf ?? false;
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -127,13 +130,13 @@ const ProgressScreen: React.FC = () => {
                     <h1 className="text-3xl font-extrabold text-forest dark:text-white">Динамика</h1>
                     <p className="text-sage dark:text-gray-400 mt-1">Визуализируйте свою эмоциональную динамику.</p>
                 </div>
-                <button 
-                    onClick={handleExportPDF} 
-                    disabled={loading || filteredHistory.length === 0 || exporting}
+                <button
+                    onClick={pdfUnlocked ? handleExportPDF : undefined}
+                    disabled={!pdfUnlocked || loading || filteredHistory.length === 0 || exporting}
                     className="flex flex-col items-center justify-center text-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-sage/10 p-2 rounded-xl transition-colors"
-                    title="Экспорт в PDF"
+                    title={pdfUnlocked ? 'Экспорт в PDF' : `PDF-экспорт откроется на ${FEATURE_DAYS.exportPdf} дне (сейчас ${streak?.current ?? 0})`}
                 >
-                    <span className="material-symbols-outlined text-2xl">{exporting ? 'hourglass_empty' : 'picture_as_pdf'}</span>
+                    <span className="material-symbols-outlined text-2xl">{!pdfUnlocked ? 'lock' : exporting ? 'hourglass_empty' : 'picture_as_pdf'}</span>
                     <span className="text-[10px] font-bold mt-1 uppercase tracking-wider">PDF</span>
                 </button>
             </header>

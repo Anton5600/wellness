@@ -8,6 +8,7 @@ import {
   EveningFeedback,
 } from '../types';
 import { findOilByName } from '../data/oilDatabase';
+import { computeUnlockedFeatures } from './recommendation/unlock';
 import {
   saveEmotionalGraphEntry,
   getEmotionalGraphEntry,
@@ -122,17 +123,7 @@ export class CompassService {
 
   public async getUnlockedFeatures(): Promise<UnlockedFeatures> {
     const streak = await this.getStreak();
-    const days = Math.max(1, streak.current);
-    return {
-      morningRitual: true,
-      eveningCheckin: days >= 3,
-      mapDay: days >= 5,
-      weeklyCheck: days >= 7,
-      cards: days >= 10,
-      patterns: days >= 14,
-      catalog: days >= 21,
-      exportPdf: days >= 30,
-    };
+    return computeUnlockedFeatures(streak.current);
   }
 
   // --- Записи эмоционального графа ---

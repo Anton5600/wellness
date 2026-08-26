@@ -4,3 +4,4 @@ export * from './effectiveness';
 export * from './wheelShape';
 export * from './shortlist';
 export * from './inference';
+export * from './unlock';
