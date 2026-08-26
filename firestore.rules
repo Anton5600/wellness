@@ -72,6 +72,39 @@ service cloud.firestore {
              data.price is number && data.price >= 0;
     }
 
+    // Запись эмоционального графа (чек-ин). Опциональные aromaId/eveningFeedback допускаются.
+    function isValidEmotionalGraphEntry(data) {
+      return data.keys().hasAll(['userId', 'date', 'timestamp', 'microInput', 'inputType', 'plutchikInferred', 'dominant', 'aroma', 'aromaReason', 'insight', 'breathingDone', 'breathingPattern', 'stuckFlag']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 100 &&
+             data.date is string && data.date.size() > 0 && data.date.size() < 20 &&
+             data.timestamp is number && data.timestamp > 0 &&
+             data.microInput is string &&
+             data.inputType is string && data.inputType.size() < 20 &&
+             data.plutchikInferred is map && data.plutchikInferred.size() == 8 &&
+             data.dominant is string && data.dominant.size() < 100 &&
+             data.aroma is string && data.aroma.size() < 100 &&
+             data.aromaReason is string &&
+             data.insight is string &&
+             data.breathingDone is bool &&
+             data.breathingPattern is string && data.breathingPattern.size() < 20 &&
+             data.stuckFlag is bool;
+    }
+
+    function isValidPlutchikProfile(data) {
+      return data.keys().hasAll(['baseline', 'lastWeekly', 'trends', 'lastWeeklyDate']) &&
+             data.baseline is map && data.baseline.size() == 8 &&
+             data.lastWeekly is map && data.lastWeekly.size() == 8 &&
+             data.trends is map && data.trends.size() == 8 &&
+             data.lastWeeklyDate is string;
+    }
+
+    function isValidStreak(data) {
+      return data.keys().hasAll(['current', 'longest', 'lastActiveDate']) &&
+             data.current is number && data.current > 0 &&
+             data.longest is number && data.longest > 0 &&
+             data.lastActiveDate is string;
+    }
+
     // ===============================================================
     // Collections
     // ===============================================================
@@ -117,16 +150,43 @@ service cloud.firestore {
 
     match /orders/{docId} {
       allow read: if isOwner(resource.data.userId) || isAdmin();
-      
-      allow create: if isAuthenticated() && 
-                       isOwner(request.resource.data.userId) && 
+
+      allow create: if isAuthenticated() &&
+                       isOwner(request.resource.data.userId) &&
                        isValidOrder(request.resource.data);
-      
+
       // Admins can manage orders (e.g., change status)
       allow update: if isAdmin();
-      
+
       // Admins can delete orders
       allow delete: if isAdmin();
+    }
+
+    // --- Единый контур рекомендации (Плутчик) ---
+
+    match /emotionalGraph/{docId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() &&
+                       isOwner(request.resource.data.userId) &&
+                       isValidEmotionalGraphEntry(request.resource.data);
+      // setDoc (перезапись) и updateDoc (вечерний фидбек) — владелец, валидные данные.
+      allow update: if isOwner(resource.data.userId) &&
+                       isValidEmotionalGraphEntry(request.resource.data);
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /plutchikProfiles/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidPlutchikProfile(request.resource.data);
+      allow update: if isOwner(userId) && isValidPlutchikProfile(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /streaks/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidStreak(request.resource.data);
+      allow update: if isOwner(userId) && isValidStreak(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
     }
   }
 }
