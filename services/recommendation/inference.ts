@@ -32,7 +32,7 @@ export const DOMINANT_BUMP = 0.2;
 const KEYWORD_RULES: ReadonlyArray<{ emotion: EmotionKey; patterns: string[] }> = [
   { emotion: 'joy', patterns: ['😊', '😄', 'радост', 'отлич', 'счаст', 'весел', 'прекрасн', 'супер', 'люблю', 'класс', 'здорово'] },
   { emotion: 'trust', patterns: ['спокой', 'уверен', 'довер', 'расслаб', 'стабильн', 'благодар', 'умиротвор', 'безопасн'] },
-  { emotion: 'fear', patterns: ['тревог', 'тревож', 'страх', 'страшн', 'волнен', 'боюс', 'паник', 'пережива', 'неуверен'] },
+  { emotion: 'fear', patterns: ['тревог', 'тревож', 'страх', 'страшн', 'волнен', 'боюс', 'паник', 'пережива', 'неуверен', 'неспокой', 'неспокоен'] },
   { emotion: 'surprise', patterns: ['удивл', 'неожидан', 'внезапн', 'шок', 'пораж', 'вот это да'] },
   { emotion: 'sadness', patterns: ['😔', '😢', 'груст', 'устал', 'печал', 'тоск', 'плак', 'одинок', 'плохо', 'тяжело', 'опустош'] },
   { emotion: 'disgust', patterns: ['отвращ', 'противн', 'тошн', 'неприятн', 'мерзк', 'надоел'] },
@@ -45,6 +45,21 @@ const KEYWORD_RULES: ReadonlyArray<{ emotion: EmotionKey; patterns: string[] }> 
  * вектор Плутчика: baseline с «приподнятой» доминантой.
  * Чистая функция, без сайд-эффектов.
  */
+/**
+ * Проверяет, встречается ли `pattern` в `input` как самостоятельное слово-ядро,
+ * а не как часть отрицания «не…» (например, «неспокойно» не должно считаться
+ * «спокойно», «неуверен» — «уверен»).
+ */
+const hasKeyword = (input: string, pattern: string): boolean => {
+  let idx = input.indexOf(pattern);
+  while (idx !== -1) {
+    const prefix = input.slice(Math.max(0, idx - 2), idx);
+    if (!prefix.endsWith('не')) return true;
+    idx = input.indexOf(pattern, idx + 1);
+  }
+  return false;
+};
+
 export const inferEmotionState = (
   microInput: string,
   baseline: PlutchikVector
@@ -53,7 +68,7 @@ export const inferEmotionState = (
   let dominant: EmotionKey = 'anticipation';
 
   for (const rule of KEYWORD_RULES) {
-    if (rule.patterns.some((p) => inputLower.includes(p))) {
+    if (rule.patterns.some((p) => hasKeyword(inputLower, p))) {
       dominant = rule.emotion;
       break;
     }

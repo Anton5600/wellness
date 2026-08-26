@@ -18,6 +18,12 @@ describe('inferEmotionState', () => {
     expect(dominant).toBe('anticipation');
   });
 
+  it('отрицание «не» не ломает классификацию: неспокойно → страх, а не доверие', () => {
+    expect(inferEmotionState('мне неспокойно', DEFAULT_PLUTCHIK).dominant).toBe('fear');
+    expect(inferEmotionState('неуверен в себе', DEFAULT_PLUTCHIK).dominant).toBe('fear');
+    expect(inferEmotionState('я спокойно себя чувствую', DEFAULT_PLUTCHIK).dominant).toBe('trust');
+  });
+
   it('остальные эмоции baseline сохраняются', () => {
     const baseline = { ...DEFAULT_PLUTCHIK, trust: 0.9 };
     const { vector } = inferEmotionState('злюсь', baseline);

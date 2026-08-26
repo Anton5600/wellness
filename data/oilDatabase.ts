@@ -9,9 +9,8 @@ import { OilEntry } from '../types';
  *   - chronotype: в какое время суток уместно;
  *   - instruction: короткая инструкция применения.
  *
- * Маппинг «масло ↔ эмоция» выведен из EMOTIONS[].oils (constants.ts), временны́е
- * корзины — из aromaRecommendationService.ts (morning 5–12 / day 12–18 / evening 18–5).
- * ЧЕРНОВИК: требует выверки пользователем.
+ * ЧЕРНОВИК v2: режимы расширены, чтобы каждая эмоция покрывалась по нескольким
+ * стратегиям (awaken/calm/balance/support). Требует выверки пользователем.
  */
 export const OIL_DATABASE: OilEntry[] = [
   {
@@ -34,6 +33,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'energy_savings_leaf',
     effects: [
       { emotion: 'joy', mode: 'awaken' },
+      { emotion: 'joy', mode: 'support' },
       { emotion: 'anticipation', mode: 'awaken' },
     ],
     chronotype: ['morning', 'day'],
@@ -47,6 +47,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'psychology',
     effects: [
       { emotion: 'joy', mode: 'awaken' },
+      { emotion: 'joy', mode: 'support' },
     ],
     chronotype: ['morning', 'day'],
     instruction: 'Нанесите 1–2 капли (в разведении с базовым маслом) на заднюю поверхность шеи.',
@@ -59,6 +60,8 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'eco',
     effects: [
       { emotion: 'trust', mode: 'calm' },
+      { emotion: 'trust', mode: 'support' },
+      { emotion: 'anger', mode: 'calm' },
     ],
     chronotype: ['evening'],
     instruction: '1 капля на подушку или виски перед сном.',
@@ -72,6 +75,8 @@ export const OIL_DATABASE: OilEntry[] = [
     effects: [
       { emotion: 'trust', mode: 'calm' },
       { emotion: 'sadness', mode: 'balance' },
+      { emotion: 'sadness', mode: 'awaken' },
+      { emotion: 'joy', mode: 'support' },
     ],
     chronotype: ['day', 'evening'],
     instruction: 'Нанесите разведённое масло на виски и запястья.',
@@ -84,6 +89,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'spa',
     effects: [
       { emotion: 'trust', mode: 'calm' },
+      { emotion: 'trust', mode: 'support' },
       { emotion: 'sadness', mode: 'support' },
     ],
     chronotype: ['evening'],
@@ -97,6 +103,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'waves',
     effects: [
       { emotion: 'fear', mode: 'calm' },
+      { emotion: 'fear', mode: 'support' },
     ],
     chronotype: ['evening'],
     instruction: 'Распылите или нанесите на стопы для заземления.',
@@ -109,6 +116,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'grass',
     effects: [
       { emotion: 'fear', mode: 'calm' },
+      { emotion: 'fear', mode: 'support' },
     ],
     chronotype: ['evening'],
     instruction: '1 капля на стопы перед сном.',
@@ -121,6 +129,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'filter_vintage',
     effects: [
       { emotion: 'fear', mode: 'balance' },
+      { emotion: 'fear', mode: 'support' },
       { emotion: 'anger', mode: 'balance' },
     ],
     chronotype: ['morning', 'day', 'evening'],
@@ -134,6 +143,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'lightbulb',
     effects: [
       { emotion: 'surprise', mode: 'awaken' },
+      { emotion: 'joy', mode: 'support' },
     ],
     chronotype: ['morning', 'day'],
     instruction: '1 капля в стакан воды или в диффузор.',
@@ -146,6 +156,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'eco',
     effects: [
       { emotion: 'surprise', mode: 'awaken' },
+      { emotion: 'joy', mode: 'support' },
     ],
     chronotype: ['morning', 'day'],
     instruction: 'Нанесите на пульсовые точки (избегайте солнца 12 часов).',
@@ -158,6 +169,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'self_improvement',
     effects: [
       { emotion: 'sadness', mode: 'balance' },
+      { emotion: 'sadness', mode: 'support' },
     ],
     chronotype: ['evening'],
     instruction: '1 капля на область сердца или за уши.',
@@ -170,6 +182,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'potted_plant',
     effects: [
       { emotion: 'disgust', mode: 'support' },
+      { emotion: 'disgust', mode: 'balance' },
     ],
     chronotype: ['day'],
     instruction: 'Нанесите на стопы или распылите для очищения.',
@@ -182,6 +195,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'energy_savings_leaf',
     effects: [
       { emotion: 'disgust', mode: 'support' },
+      { emotion: 'disgust', mode: 'awaken' },
     ],
     chronotype: ['morning', 'day'],
     instruction: 'Вдохните из флакона или распылите для ясности.',
@@ -194,6 +208,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'local_florist',
     effects: [
       { emotion: 'disgust', mode: 'support' },
+      { emotion: 'disgust', mode: 'balance' },
     ],
     chronotype: ['day'],
     instruction: 'Нанесите на грудь или распылите.',
@@ -206,6 +221,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'compost',
     effects: [
       { emotion: 'anger', mode: 'balance' },
+      { emotion: 'anger', mode: 'support' },
     ],
     chronotype: ['evening'],
     instruction: 'Нанесите на виски или лоб для заземления.',
@@ -218,6 +234,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'camera_iris',
     effects: [
       { emotion: 'anger', mode: 'calm' },
+      { emotion: 'anger', mode: 'support' },
     ],
     chronotype: ['evening'],
     instruction: 'Нанесите на запястья и шею.',
@@ -230,6 +247,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'balance',
     effects: [
       { emotion: 'anticipation', mode: 'balance' },
+      { emotion: 'anticipation', mode: 'support' },
     ],
     chronotype: ['evening'],
     instruction: 'Нанесите на пульсовые точки или распылите.',
@@ -242,6 +260,7 @@ export const OIL_DATABASE: OilEntry[] = [
     icon: 'spa',
     effects: [
       { emotion: 'anticipation', mode: 'balance' },
+      { emotion: 'anger', mode: 'support' },
     ],
     chronotype: ['day', 'evening'],
     instruction: 'Нанесите на область живота или запястья.',
