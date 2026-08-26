@@ -1,5 +1,7 @@
 import { EmotionHistoryEntry, EmotionKey } from '../types';
 import { OILS_CATALOG } from '../data/oils';
+import { findOilById } from '../data/oilDatabase';
+import { DEFAULT_PLUTCHIK } from './recommendation/inference';
 
 export type AromaGoal = 'morning' | 'focus' | 'antistress' | 'evening' | 'stuck_support';
 
@@ -25,33 +27,88 @@ export const checkIsStuck = (history: EmotionHistoryEntry[]): boolean => {
   return heavyCount >= 2;
 };
 
-export const getAromaRecommendation = (
+/** Заголовок и бейдж для каждой цели (используется и серверным, и локальным путём). */
+const GOAL_META: Record<AromaGoal, { title: string; badge: string }> = {
+  stuck_support: { title: 'Бережная Арома-поддержка', badge: 'Мягкая опора' },
+  morning: { title: 'Утренний Настрой', badge: 'Заряд бодрости' },
+  focus: { title: 'Ясность и Концентрация', badge: 'Фокус ума' },
+  antistress: { title: 'Снятие Напряжения', badge: 'Баланс & Покой' },
+  evening: { title: 'Вечерний Покой', badge: 'Глубокий сон' },
+};
+
+/** Репрезентативная фраза для каждой эмоции — для серверного микроввода. */
+export const EMOTION_PHRASE: Record<EmotionKey, string> = {
+  joy: 'мне радостно',
+  trust: 'я спокоен',
+  fear: 'мне тревожно',
+  surprise: 'я удивлён',
+  sadness: 'мне грустно',
+  disgust: 'мне неприятно',
+  anger: 'меня всё бесит',
+  anticipation: 'я в предвкушении',
+};
+
+/** Определяет цель по явному запросу, stuck-флагу или часу суток. */
+export const resolveGoal = (
+  history: EmotionHistoryEntry[],
+  requestedGoal?: AromaGoal,
+  hour: number = new Date().getHours()
+): AromaGoal => {
+  if (requestedGoal) return requestedGoal;
+  if (checkIsStuck(history)) return 'stuck_support';
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'focus';
+  if (hour >= 17 && hour < 22) return 'antistress';
+  return 'evening';
+};
+
+/** Отображение результата сервера в структуру рекомендации. Чистая, тестируемая. */
+export const serverResultToAromaRecommendation = (
+  result: {
+    aromaId?: string;
+    aroma?: string;
+    aromaReason?: string;
+    insight?: string;
+    dominant?: EmotionKey;
+  },
+  goal: AromaGoal,
+  isStuck: boolean
+): AromaRecommendation => {
+  const oil = result.aromaId ? findOilById(result.aromaId) : undefined;
+  const meta = GOAL_META[goal];
+  return {
+    goal,
+    title: meta.title,
+    badge: meta.badge,
+    oilId: result.aromaId ?? 'lavender',
+    oilName: oil?.name ?? result.aroma ?? 'Лаванда',
+    oilIcon: oil?.icon ?? 'spa',
+    reason: result.aromaReason ?? 'Поддерживает эмоциональный баланс.',
+    practice: oil?.instruction ?? result.insight ?? 'Нанесите 1 каплю на запястья и сделайте 3 глубоких вдоха.',
+    isStuckAlert: isStuck,
+    emotionSource: result.dominant,
+  };
+};
+
+/**
+ * Локальный (оффлайн) подбор по цели и последней эмоции — жёстко зашитый
+ * «кураторский» вариант, остаётся фолбэком при отсутствии сети/сервера.
+ */
+export const getLocalAromaRecommendation = (
   history: EmotionHistoryEntry[],
   requestedGoal?: AromaGoal
 ): AromaRecommendation => {
   const isStuck = checkIsStuck(history);
   const latestEntry = history && history.length > 0 ? history[0] : null;
   const latestEmotion: EmotionKey | undefined = latestEntry?.emotionKey;
-
-  let goal = requestedGoal;
-  if (!goal) {
-    if (isStuck) {
-      goal = 'stuck_support';
-    } else {
-      const hour = new Date().getHours();
-      if (hour >= 5 && hour < 12) goal = 'morning';
-      else if (hour >= 12 && hour < 17) goal = 'focus';
-      else if (hour >= 17 && hour < 22) goal = 'antistress';
-      else goal = 'evening';
-    }
-  }
+  const goal = resolveGoal(history, requestedGoal);
 
   if (goal === 'stuck_support') {
     let oilId = 'lavender';
     let oilName = 'Лаванда & Ладан';
     let oilIcon = 'spa';
     let reason = 'Мы заметили, что последние дни принесли вам усталость или тревогу. Эфирный союз Лаванды и Ладана создаст тёплый защитный кокон и вернёт внутренний покой.';
-    
+
     if (latestEmotion === 'sadness') {
       oilId = 'bergamot';
       oilName = 'Бергамот & Ладан';
@@ -158,6 +215,45 @@ export const getAromaRecommendation = (
     isStuckAlert: isStuck,
     emotionSource: latestEmotion
   };
+};
+
+/**
+ * Гибридная рекомендация: по умолчанию (без явной цели и с последней эмоцией)
+ * спрашиваем серверный движок «правила → LLM»; при недоступности или для
+ * явных целей-вкладок возвращаем кураторский локальный подбор.
+ */
+export const getAromaRecommendation = async (
+  history: EmotionHistoryEntry[],
+  requestedGoal?: AromaGoal
+): Promise<AromaRecommendation> => {
+  const latestEmotion = history && history.length > 0 ? history[0]?.emotionKey : undefined;
+  const goal = resolveGoal(history, requestedGoal);
+  const isStuck = checkIsStuck(history);
+
+  if (!requestedGoal && latestEmotion) {
+    try {
+      const response = await fetch('/api/ai/recommendation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          microInput: EMOTION_PHRASE[latestEmotion] ?? 'как я себя чувствую',
+          plutchikProfile: { baseline: DEFAULT_PLUTCHIK },
+          emotionalHistory: [],
+          context: { hour: new Date().getHours() },
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.result && typeof data.result === 'object') {
+          return serverResultToAromaRecommendation(data.result, goal, isStuck);
+        }
+      }
+    } catch (e) {
+      console.warn('[AromaRecommendation] server fallback triggered', e);
+    }
+  }
+
+  return getLocalAromaRecommendation(history, requestedGoal);
 };
 
 export const getOilById = (oilId: string) => {

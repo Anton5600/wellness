@@ -255,6 +255,20 @@ const DashboardScreen: React.FC = () => {
       </header>
 
       <section className="px-6 py-6 space-y-4">
+        <button
+          onClick={() => navigate('/check-in')}
+          className="w-full flex items-center justify-between bg-gradient-to-r from-primary to-emerald-500 rounded-2xl p-5 shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform"
+        >
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-white text-3xl">psychology_alt</span>
+            <div className="text-left">
+              <p className="text-white font-extrabold text-base">Проверка состояния</p>
+              <p className="text-white/85 text-xs">Опишите чувства — подберём масло дня</p>
+            </div>
+          </div>
+          <span className="material-symbols-outlined text-white">chevron_right</span>
+        </button>
+
         <div className="p-6 flex flex-col rounded-2xl shadow-lg bg-white dark:bg-[#1a2d18] border border-[#e2e8e1] dark:border-sage/30">
           {loading ? (
              <div className="animate-pulse">
