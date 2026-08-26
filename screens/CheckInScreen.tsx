@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNavBar from '../components/BottomNavBar';
 import { PlutchikWheel } from '../components/PlutchikWheel';
@@ -26,6 +26,11 @@ export const CheckInScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<EveningFeedback | undefined>(undefined);
   const [isBreathingOpen, setIsBreathingOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [sttBusy, setSttBusy] = useState(false);
+  const [sttError, setSttError] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     compassService.setCurrentUserId(user?.uid);
@@ -67,6 +72,67 @@ export const CheckInScreen: React.FC = () => {
     if (updated) setTodayEntry(updated);
   };
 
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  const toggleRecording = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      return;
+    }
+
+    setSttError(null);
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      setSttError('Голосовой ввод недоступен в этом браузере.');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/ogg' });
+        chunksRef.current = [];
+        setIsRecording(false);
+        if (blob.size === 0) return;
+        setSttBusy(true);
+        try {
+          const audioBase64 = await blobToBase64(blob);
+          const res = await fetch('/api/stt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audioBase64, mimeType: blob.type || 'audio/ogg' }),
+          });
+          const data = await res.json();
+          if (res.ok && data.text) {
+            setInput((prev) => (prev ? `${prev} ${data.text}`.trim() : data.text));
+          } else {
+            setSttError(!data.text ? 'Голосовой ввод пока недоступен.' : (data.error || 'Не удалось распознать речь.'));
+          }
+        } catch {
+          setSttError('Ошибка сети при распознавании.');
+        } finally {
+          setSttBusy(false);
+        }
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+    } catch {
+      setSttError('Нет доступа к микрофону. Разрешите доступ и попробуйте ещё раз.');
+    }
+  };
+
   const oil = todayEntry?.aromaId ? findOilById(todayEntry.aromaId) : undefined;
   const dominantLabel = todayEntry ? EMOTION_LABELS[todayEntry.dominant] : '';
 
@@ -93,8 +159,22 @@ export const CheckInScreen: React.FC = () => {
               rows={3}
               className="w-full bg-gray-100 dark:bg-gray-800 text-forest dark:text-white px-4 py-3 rounded-xl font-medium outline-none resize-none focus:ring-2 focus:ring-primary/50"
             />
-            {error && (
-              <p className="text-xs text-red-500 font-medium mt-2">{error}</p>
+            <button
+              onClick={toggleRecording}
+              disabled={sttBusy}
+              className={`mt-2 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-sm transition-all ${
+                isRecording
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'bg-gray-100 dark:bg-gray-800 text-forest dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
+              } disabled:opacity-60`}
+            >
+              <span className={`material-symbols-outlined text-lg ${sttBusy ? 'animate-spin' : ''}`}>
+                {sttBusy ? 'progress_activity' : isRecording ? 'mic' : 'mic_none'}
+              </span>
+              {isRecording ? 'Остановить запись' : 'Сказать голосом'}
+            </button>
+            {(sttError || error) && (
+              <p className="text-xs text-red-500 font-medium mt-2">{sttError || error}</p>
             )}
             <button
               onClick={handleSubmit}

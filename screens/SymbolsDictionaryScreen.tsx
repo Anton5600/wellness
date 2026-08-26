@@ -2,9 +2,12 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EMOTIONS } from '../constants';
 import { EmotionSymbol } from '../components/EmotionSymbol';
+import { FeatureLock } from '../components/FeatureLock';
+import { useUnlockedFeatures, FEATURE_DAYS } from '../hooks/useUnlockedFeatures';
 
 const SymbolsDictionaryScreen: React.FC = () => {
     const navigate = useNavigate();
+    const { features, streak } = useUnlockedFeatures();
 
     return (
         <div className="flex flex-col min-h-[100dvh] w-full bg-background-light dark:bg-background-dark font-display pb-10">
@@ -25,20 +28,21 @@ const SymbolsDictionaryScreen: React.FC = () => {
                     Этот язык символов отражает природу каждой эмоции. Используйте их для коммуникации, самопознания и визуализации своих состояний.
                 </p>
 
+                <FeatureLock unlocked={features?.patterns ?? false} title="Словарь символов" dayRequired={FEATURE_DAYS.patterns} currentDay={streak?.current ?? 0}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {Object.values(EMOTIONS).map((emotion) => (
-                        <div 
-                            key={emotion.key} 
+                        <div
+                            key={emotion.key}
                             className="bg-white dark:bg-[#1f1f1f] p-6 rounded-3xl shadow-sm border border-sage/10 dark:border-sage/20 flex flex-col items-center justify-center space-y-6"
                         >
                             <div className="w-full flex justify-center py-4">
-                                <EmotionSymbol 
-                                    emotionKey={emotion.key} 
-                                    size={140} 
-                                    className="drop-shadow-md transition-transform hover:scale-105 duration-500" 
+                                <EmotionSymbol
+                                    emotionKey={emotion.key}
+                                    size={140}
+                                    className="drop-shadow-md transition-transform hover:scale-105 duration-500"
                                 />
                             </div>
-                            
+
                             <div className="text-center w-full">
                                 <h2 className="text-2xl font-extrabold text-forest dark:text-white mb-2">{emotion.title}</h2>
                                 <p className="font-semibold text-primary mb-3">{emotion.headline}</p>
@@ -49,6 +53,7 @@ const SymbolsDictionaryScreen: React.FC = () => {
                         </div>
                     ))}
                 </div>
+                </FeatureLock>
             </main>
         </div>
     );

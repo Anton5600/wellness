@@ -11,6 +11,9 @@ import { useCart } from '../context/CartContext';
 import { METAPHORIC_CARDS, MetaphoricCard } from '../data/cards';
 import { getQuoteForDay, getRandomQuote } from '../data/quotes';
 import { AromaMoodWidget } from '../components/AromaMoodWidget';
+import { FeatureLock } from '../components/FeatureLock';
+import { useUnlockedFeatures, FEATURE_DAYS } from '../hooks/useUnlockedFeatures';
+import { compassService } from '../services/compassService';
 import { initNotificationListeners } from '../services/notificationService';
 
 const LOADING_PHRASES = [
@@ -59,6 +62,8 @@ const DashboardScreen: React.FC = () => {
   const [synthesisError, setSynthesisError] = useState<string | null>(null);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [loadingPhrase, setLoadingPhrase] = useState(LOADING_PHRASES[0]);
+  const [isStuck, setIsStuck] = useState(false);
+  const { features, streak } = useUnlockedFeatures();
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -141,6 +146,15 @@ const DashboardScreen: React.FC = () => {
     };
     fetchHistory();
   }, [user]);
+
+  useEffect(() => {
+    compassService.setCurrentUserId(user?.uid);
+    let cancelled = false;
+    compassService.checkIsStuck().then((stuck) => {
+      if (!cancelled) setIsStuck(stuck);
+    });
+    return () => { cancelled = true; };
+  }, [user?.uid]);
 
   const latestEmotion = history.length > 0 ? EMOTIONS[history[0].emotionKey] : null;
 
@@ -255,6 +269,20 @@ const DashboardScreen: React.FC = () => {
       </header>
 
       <section className="px-6 py-6 space-y-4">
+        {isStuck && (
+          <button
+            onClick={() => navigate('/resources')}
+            className="w-full flex items-center gap-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl p-4 border border-amber-200 dark:border-amber-500/30 active:scale-[0.98] transition-transform"
+          >
+            <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">favorite</span>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Последние дни даются непросто</p>
+              <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">Мы собрали практики и контакты поддержки</p>
+            </div>
+            <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">chevron_right</span>
+          </button>
+        )}
+
         <button
           onClick={() => navigate('/check-in')}
           className="w-full flex items-center justify-between bg-gradient-to-r from-primary to-emerald-500 rounded-2xl p-5 shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform"
@@ -364,6 +392,7 @@ const DashboardScreen: React.FC = () => {
 
       <section className="px-6 pb-8">
         <h3 className="text-forest dark:text-white text-lg font-bold leading-tight tracking-tight mb-4">Карта дня</h3>
+        <FeatureLock unlocked={features?.cards ?? false} title="Карта дня" dayRequired={FEATURE_DAYS.cards} currentDay={streak?.current ?? 0}>
         {!cardRevealed ? (
             <div 
                 onClick={drawCard}
@@ -404,6 +433,7 @@ const DashboardScreen: React.FC = () => {
                 </div>
             </div>
         )}
+        </FeatureLock>
       </section>
 
       <section className="px-6 pb-8">
