@@ -17,6 +17,8 @@ import ProfileScreen from './screens/ProfileScreen';
 import SecurityScreen from './screens/SecurityScreen';
 import LockScreen from './screens/LockScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
+import CheckInScreen from './screens/CheckInScreen';
+import WeeklyCheckScreen from './screens/WeeklyCheckScreen';
 import VerifyEmailScreen from './screens/VerifyEmailScreen';
 import CabinetScreen from './screens/CabinetScreen';
 import AdminScreen from './screens/AdminScreen';
@@ -180,6 +182,8 @@ const AppRoutes: React.FC = () => {
             <Route path="/profile" element={<ProfileScreen />} />
             <Route path="/security" element={<SecurityScreen />} />
             <Route path="/notifications" element={<NotificationsScreen />} />
+            <Route path="/check-in" element={<CheckInScreen />} />
+            <Route path="/weekly-check" element={<WeeklyCheckScreen />} />
             <Route path="/admin" element={<AdminScreen />} />
             <Route path="/admin-oils" element={<AdminOilsScreen />} />
             <Route path="/admin-orders" element={<AdminOrdersScreen />} />

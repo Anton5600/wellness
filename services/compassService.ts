@@ -9,6 +9,7 @@ import {
   EveningFeedback,
   User,
 } from '../types';
+import { findOilByName } from '../data/oilDatabase';
 
 const STORAGE_KEYS = {
   USER: 'compass_user',
@@ -245,7 +246,7 @@ export class CompassService {
     const recent = this.getRecentEntries(7);
 
     try {
-      const response = await fetch('/api/ai/synthesis', {
+      const response = await fetch('/api/ai/recommendation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -257,6 +258,7 @@ export class CompassService {
             streak: this.streak.current,
             stuckFlag: isStuck,
             timeOfDay: new Date().getHours() < 12 ? 'morning' : 'day',
+            hour: new Date().getHours(),
           },
         }),
       });
@@ -264,6 +266,7 @@ export class CompassService {
       if (response.ok) {
         const data = await response.json();
         if (data.result && typeof data.result === 'object') {
+          const aroma = data.result.aroma || 'Бергамот';
           const entry: EmotionalGraphEntry = {
             date: today,
             timestamp: Date.now(),
@@ -271,7 +274,8 @@ export class CompassService {
             inputType,
             plutchikInferred: data.result.plutchikInferred || DEFAULT_PLUTCHIK,
             dominant: data.result.dominant || 'anticipation',
-            aroma: data.result.aroma || 'Бергамот',
+            aroma,
+            aromaId: data.result.aromaId || findOilByName(aroma)?.id,
             aromaReason: data.result.aromaReason || 'Поддерживает ясность и мягкое заземление',
             insight: data.result.insight || 'Твой Компас показывает настрой на уверенный шаг вперёд.',
             breathingDone: false,
@@ -337,6 +341,7 @@ export class CompassService {
       plutchikInferred: inferred,
       dominant,
       aroma,
+      aromaId: findOilByName(aroma)?.id,
       aromaReason,
       insight,
       breathingDone: false,

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EmotionHistoryEntry } from '../types';
-import { 
-  getAromaRecommendation, 
-  AromaGoal, 
-  AromaRecommendation 
+import {
+  getAromaRecommendation,
+  getLocalAromaRecommendation,
+  AromaGoal,
+  AromaRecommendation
 } from '../services/aromaRecommendationService';
 import { AromaBreathingModal } from './AromaBreathingModal';
 import { useCart } from '../context/CartContext';
@@ -19,14 +20,18 @@ export const AromaMoodWidget: React.FC<AromaMoodWidgetProps> = ({ history }) => 
   const { addToCart } = useCart();
 
   const [activeGoal, setActiveGoal] = useState<AromaGoal | null>(null);
-  const [recommendation, setRecommendation] = useState<AromaRecommendation>(() => 
-    getAromaRecommendation(history)
+  const [recommendation, setRecommendation] = useState<AromaRecommendation>(() =>
+    getLocalAromaRecommendation(history)
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [addedToast, setAddedToast] = useState(false);
 
   useEffect(() => {
-    setRecommendation(getAromaRecommendation(history, activeGoal || undefined));
+    let cancelled = false;
+    getAromaRecommendation(history, activeGoal || undefined).then((rec) => {
+      if (!cancelled) setRecommendation(rec);
+    });
+    return () => { cancelled = true; };
   }, [history, activeGoal]);
 
   const handleGoalSelect = (goal: AromaGoal) => {

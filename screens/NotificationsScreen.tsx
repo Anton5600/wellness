@@ -64,7 +64,7 @@ const NotificationsScreen: React.FC = () => {
             setStuckReminder(value); 
             newPrefs = { stuckReminder: value }; 
             if (value) {
-                const rec = getAromaRecommendation(history, 'stuck_support');
+                const rec = await getAromaRecommendation(history, 'stuck_support');
                 scheduleStuckReminder(`🌿 Бережная арома-поддержка: ${rec.oilName} поможет укутать нервную систему покой.`);
             } else {
                 cancelStuckReminder();
@@ -74,7 +74,7 @@ const NotificationsScreen: React.FC = () => {
             setMorningMood(value); 
             newPrefs = { morningMood: value }; 
             if (value) {
-                const rec = getAromaRecommendation(history, 'morning');
+                const rec = await getAromaRecommendation(history, 'morning');
                 scheduleMorningMood(morningTime, `☀️ Утренний настрой: рекомендуем ${rec.oilName} (${rec.badge}). Нажмите для 1-мин арома-ингаляции!`);
             } else {
                 cancelMorningMood();
