@@ -1,7 +1,7 @@
 
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { EmotionHistoryEntry, EmotionKey, UserOil, OilCatalogItem } from '../types';
+import { EmotionHistoryEntry, EmotionKey, UserOil, OilCatalogItem, EmotionalGraphEntry, PlutchikProfile, StreakInfo, EveningFeedback } from '../types';
 import { OILS_CATALOG } from '../data/oils';
 
 const withTimeout = <T>(promise: Promise<T>, timeoutMs = 1500): Promise<T> => {
@@ -209,14 +209,14 @@ export const removeUserOil = async (docId: string): Promise<void> => {
 export const deleteAllUserData = async (userId: string): Promise<void> => {
   try {
     const qHistory = query(
-      collection(db, 'emotionHistory'), 
+      collection(db, 'emotionHistory'),
       where('userId', '==', userId)
     );
     const snapshotHistory = await getDocs(qHistory);
     const deleteHistoryPromises = snapshotHistory.docs.map(d => deleteDoc(doc(db, 'emotionHistory', d.id)));
-    
+
     const qOils = query(
-      collection(db, 'userOils'), 
+      collection(db, 'userOils'),
       where('userId', '==', userId)
     );
     const snapshotOils = await getDocs(qOils);
@@ -227,4 +227,168 @@ export const deleteAllUserData = async (userId: string): Promise<void> => {
     console.error("Error deleting user data: ", error);
     throw error;
   }
+};
+
+// --- Единый контур рекомендации (Плутчик): emotionalGraph + профиль + streak ---
+//
+// Паттерн как у emotionHistory: локальный кеш (localStorage, ключ с userId) —
+// мгновенное чтение/запись офлайн, Firestore — персистентная правда + фоновая
+// синхронизация. Все функции асинхронные, userId-скоупленные.
+
+const graphKey = (userId: string) => `compass_graph_${userId}`;
+const profileKey = (userId: string) => `compass_profile_${userId}`;
+const streakKey = (userId: string) => `compass_streak_${userId}`;
+
+const readLocal = <T>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeLocal = (key: string, data: unknown): void => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+};
+
+// --- emotionalGraph (записи чек-ина по дате) ---
+
+export const saveEmotionalGraphEntry = async (userId: string, entry: EmotionalGraphEntry): Promise<EmotionalGraphEntry> => {
+  const graph = readLocal<Record<string, EmotionalGraphEntry>>(graphKey(userId), {});
+  graph[entry.date] = entry;
+  writeLocal(graphKey(userId), graph);
+
+  if (userId && userId !== 'guest') {
+    setDoc(doc(db, 'emotionalGraph', `${userId}_${entry.date}`), { userId, ...entry })
+      .catch((e) => console.warn('Firestore graph save failed (saved locally):', e));
+  }
+  return entry;
+};
+
+export const getEmotionalGraphEntry = async (userId: string, date: string): Promise<EmotionalGraphEntry | null> => {
+  const graph = readLocal<Record<string, EmotionalGraphEntry>>(graphKey(userId), {});
+  if (graph[date]) return graph[date];
+
+  if (userId && userId !== 'guest') {
+    try {
+      const snap = await withTimeout(getDoc(doc(db, 'emotionalGraph', `${userId}_${date}`)), 1500);
+      if (snap.exists()) {
+        const entry = snap.data() as EmotionalGraphEntry;
+        graph[date] = entry;
+        writeLocal(graphKey(userId), graph);
+        return entry;
+      }
+    } catch (e) {
+      console.warn('Firestore graph entry read failed:', e);
+    }
+  }
+  return null;
+};
+
+export const getEmotionalGraphEntries = async (userId: string, count = 7): Promise<EmotionalGraphEntry[]> => {
+  const localEntries = Object.values(readLocal<Record<string, EmotionalGraphEntry>>(graphKey(userId), {}));
+  const remoteEntries: EmotionalGraphEntry[] = [];
+
+  if (userId && userId !== 'guest') {
+    try {
+      const snap = await withTimeout(
+        getDocs(query(collection(db, 'emotionalGraph'), where('userId', '==', userId))),
+        1500
+      );
+      snap.forEach((d) => remoteEntries.push(d.data() as EmotionalGraphEntry));
+    } catch (e) {
+      console.warn('Firestore graph read failed (using local):', e);
+    }
+  }
+
+  const map = new Map<string, EmotionalGraphEntry>();
+  [...localEntries, ...remoteEntries].forEach((e) => {
+    if (e && e.date) map.set(e.date, e);
+  });
+  const merged = Array.from(map.values()).sort((a, b) => b.timestamp - a.timestamp);
+
+  const asObj: Record<string, EmotionalGraphEntry> = {};
+  merged.forEach((e) => { asObj[e.date] = e; });
+  writeLocal(graphKey(userId), asObj);
+
+  return merged.slice(0, count);
+};
+
+export const saveEveningFeedbackFirestore = async (userId: string, date: string, feedback: EveningFeedback): Promise<EmotionalGraphEntry | null> => {
+  const graph = readLocal<Record<string, EmotionalGraphEntry>>(graphKey(userId), {});
+  const entry = graph[date];
+  if (!entry) return null;
+
+  entry.eveningFeedback = feedback;
+  graph[date] = entry;
+  writeLocal(graphKey(userId), graph);
+
+  if (userId && userId !== 'guest') {
+    updateDoc(doc(db, 'emotionalGraph', `${userId}_${date}`), { eveningFeedback: feedback })
+      .catch((e) => console.warn('Firestore feedback save failed:', e));
+  }
+  return entry;
+};
+
+// --- plutchikProfiles (базовый/недельный профиль) ---
+
+export const getPlutchikProfile = async (userId: string, fallback: PlutchikProfile): Promise<PlutchikProfile> => {
+  const local = readLocal<PlutchikProfile | null>(profileKey(userId), null);
+  if (local) return local;
+
+  if (userId && userId !== 'guest') {
+    try {
+      const snap = await withTimeout(getDoc(doc(db, 'plutchikProfiles', userId)), 1500);
+      if (snap.exists()) {
+        const profile = snap.data() as PlutchikProfile;
+        writeLocal(profileKey(userId), profile);
+        return profile;
+      }
+    } catch (e) {
+      console.warn('Firestore profile read failed:', e);
+    }
+  }
+  return fallback;
+};
+
+export const savePlutchikProfile = async (userId: string, profile: PlutchikProfile): Promise<PlutchikProfile> => {
+  writeLocal(profileKey(userId), profile);
+  if (userId && userId !== 'guest') {
+    setDoc(doc(db, 'plutchikProfiles', userId), profile)
+      .catch((e) => console.warn('Firestore profile save failed:', e));
+  }
+  return profile;
+};
+
+// --- streaks ---
+
+export const getStreakInfo = async (userId: string, fallback: StreakInfo): Promise<StreakInfo> => {
+  const local = readLocal<StreakInfo | null>(streakKey(userId), null);
+  if (local) return local;
+
+  if (userId && userId !== 'guest') {
+    try {
+      const snap = await withTimeout(getDoc(doc(db, 'streaks', userId)), 1500);
+      if (snap.exists()) {
+        const streak = snap.data() as StreakInfo;
+        writeLocal(streakKey(userId), streak);
+        return streak;
+      }
+    } catch (e) {
+      console.warn('Firestore streak read failed:', e);
+    }
+  }
+  return fallback;
+};
+
+export const saveStreakInfo = async (userId: string, streak: StreakInfo): Promise<StreakInfo> => {
+  writeLocal(streakKey(userId), streak);
+  if (userId && userId !== 'guest') {
+    setDoc(doc(db, 'streaks', userId), streak)
+      .catch((e) => console.warn('Firestore streak save failed:', e));
+  }
+  return streak;
 };

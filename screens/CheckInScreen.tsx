@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNavBar from '../components/BottomNavBar';
 import { PlutchikWheel } from '../components/PlutchikWheel';
+import { AromaBreathingModal } from '../components/AromaBreathingModal';
+import { useAuth } from '../context/AuthContext';
 import { compassService } from '../services/compassService';
 import { findOilById } from '../data/oilDatabase';
 import { EMOTION_LABELS } from '../services/recommendation/inference';
-import { EveningFeedback, EmotionalGraphEntry } from '../types';
+import { EveningFeedback, EmotionalGraphEntry, PlutchikProfile } from '../types';
 
 const FEEDBACK_OPTIONS: Array<{ value: EveningFeedback; label: string; icon: string }> = [
   { value: 'better', label: 'Стало лучше', icon: 'thumb_up' },
@@ -15,15 +17,31 @@ const FEEDBACK_OPTIONS: Array<{ value: EveningFeedback; label: string; icon: str
 
 export const CheckInScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [todayEntry, setTodayEntry] = useState<EmotionalGraphEntry | null>(() =>
-    compassService.getTodayEntry()
-  );
+  const { user } = useAuth();
+
+  const [todayEntry, setTodayEntry] = useState<EmotionalGraphEntry | null>(null);
+  const [profile, setProfile] = useState<PlutchikProfile | null>(null);
   const [input, setInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<EveningFeedback | undefined>(todayEntry?.eveningFeedback);
+  const [feedback, setFeedback] = useState<EveningFeedback | undefined>(undefined);
+  const [isBreathingOpen, setIsBreathingOpen] = useState(false);
 
-  const profile = compassService.getProfile();
+  useEffect(() => {
+    compassService.setCurrentUserId(user?.uid);
+    let cancelled = false;
+    (async () => {
+      const [entry, prof] = await Promise.all([
+        compassService.getTodayEntry(),
+        compassService.getProfile(),
+      ]);
+      if (cancelled) return;
+      setTodayEntry(entry);
+      setFeedback(entry?.eveningFeedback);
+      setProfile(prof);
+    })();
+    return () => { cancelled = true; };
+  }, [user?.uid]);
 
   const handleSubmit = async () => {
     const text = input.trim();
@@ -42,10 +60,10 @@ export const CheckInScreen: React.FC = () => {
     }
   };
 
-  const handleFeedback = (value: EveningFeedback) => {
+  const handleFeedback = async (value: EveningFeedback) => {
     if (!todayEntry) return;
-    const updated = compassService.saveEveningFeedback(todayEntry.date, value);
     setFeedback(value);
+    const updated = await compassService.saveEveningFeedback(todayEntry.date, value);
     if (updated) setTodayEntry(updated);
   };
 
@@ -110,12 +128,14 @@ export const CheckInScreen: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mb-4">
-                <PlutchikWheel vector={todayEntry.plutchikInferred} baseline={profile.baseline} size={280} />
-                <p className="text-center text-sm font-bold text-forest dark:text-white mt-3">
-                  Доминанта: <span className="text-primary">{dominantLabel}</span>
-                </p>
-              </div>
+              {profile && (
+                <div className="mb-4">
+                  <PlutchikWheel vector={todayEntry.plutchikInferred} baseline={profile.baseline} size={280} />
+                  <p className="text-center text-sm font-bold text-forest dark:text-white mt-3">
+                    Доминанта: <span className="text-primary">{dominantLabel}</span>
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-3 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
                 <p className="text-sm text-forest/90 dark:text-gray-200 leading-relaxed">
@@ -131,6 +151,15 @@ export const CheckInScreen: React.FC = () => {
                   </p>
                 )}
               </div>
+
+              {/* Дыхание */}
+              <button
+                onClick={() => setIsBreathingOpen(true)}
+                className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-forest dark:text-white bg-primary/10 border border-primary/30 hover:bg-primary/20 active:scale-[0.98] transition-all"
+              >
+                <span className="material-symbols-outlined text-primary">air</span>
+                1-мин ингаляция с маслом
+              </button>
             </div>
 
             {/* Вечерний фидбек */}
@@ -179,6 +208,13 @@ export const CheckInScreen: React.FC = () => {
           <span className="material-symbols-outlined text-sage">chevron_right</span>
         </button>
       </main>
+
+      <AromaBreathingModal
+        isOpen={isBreathingOpen}
+        onClose={() => setIsBreathingOpen(false)}
+        oilName={todayEntry?.aroma ?? 'масло'}
+        practiceText={oil?.instruction ?? todayEntry?.insight ?? 'Вдохните аромат из ладоней.'}
+      />
 
       <BottomNavBar />
     </div>

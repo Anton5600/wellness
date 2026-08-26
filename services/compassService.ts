@@ -1,24 +1,23 @@
 import {
   EmotionKey,
   PlutchikVector,
-  CompassSettings,
   PlutchikProfile,
   StreakInfo,
   EmotionalGraphEntry,
   UnlockedFeatures,
   EveningFeedback,
-  User,
 } from '../types';
 import { findOilByName } from '../data/oilDatabase';
-
-const STORAGE_KEYS = {
-  USER: 'compass_user',
-  SETTINGS: 'compass_settings',
-  PROFILE: 'compass_profile',
-  STREAK: 'compass_streak',
-  GRAPH: 'compass_graph',
-  UNLOCKED: 'compass_unlocked',
-};
+import {
+  saveEmotionalGraphEntry,
+  getEmotionalGraphEntry,
+  getEmotionalGraphEntries,
+  saveEveningFeedbackFirestore,
+  getPlutchikProfile,
+  savePlutchikProfile,
+  getStreakInfo,
+  saveStreakInfo,
+} from './firestoreService';
 
 const DEFAULT_PLUTCHIK: PlutchikVector = {
   joy: 0.5,
@@ -31,103 +30,62 @@ const DEFAULT_PLUTCHIK: PlutchikVector = {
   anticipation: 0.6,
 };
 
-const DEFAULT_SETTINGS: CompassSettings = {
-  morningPushTime: '08:00',
-  eveningPushTime: '21:00',
-  preferredInput: 'tap',
-  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-};
+const defaultProfile = (): PlutchikProfile => ({
+  baseline: DEFAULT_PLUTCHIK,
+  lastWeekly: DEFAULT_PLUTCHIK,
+  trends: {
+    joy: 'стабильно',
+    trust: 'стабильно',
+    fear: 'стабильно',
+    surprise: 'стабильно',
+    sadness: 'стабильно',
+    disgust: 'стабильно',
+    anger: 'стабильно',
+    anticipation: 'стабильно',
+  },
+  lastWeeklyDate: new Date().toISOString().split('T')[0],
+});
 
+const defaultStreak = (): StreakInfo => ({
+  current: 1,
+  longest: 1,
+  lastActiveDate: new Date().toISOString().split('T')[0],
+});
+
+/**
+ * Единый сервис контура рекомендации (Плутчик). Асинхронный, userId-скоупленный:
+ * Firestore — персистентная правда, localStorage — офлайн-кеш (см. firestoreService).
+ */
 export class CompassService {
-  private user: User | null = null;
-  private settings: CompassSettings = DEFAULT_SETTINGS;
-  private profile: PlutchikProfile;
-  private streak: StreakInfo;
-  private graph: Record<string, EmotionalGraphEntry> = {};
+  private currentUserId: string = 'guest';
 
-  constructor() {
-    this.user = this.loadJSON(STORAGE_KEYS.USER, null);
-    this.settings = this.loadJSON(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
-    this.profile = this.loadJSON(STORAGE_KEYS.PROFILE, {
-      baseline: DEFAULT_PLUTCHIK,
-      lastWeekly: DEFAULT_PLUTCHIK,
-      trends: {
-        joy: 'стабильно',
-        trust: 'стабильно',
-        fear: 'стабильно',
-        surprise: 'стабильно',
-        sadness: 'стабильно',
-        disgust: 'стабильно',
-        anger: 'стабильно',
-        anticipation: 'стабильно',
-      },
-      lastWeeklyDate: new Date().toISOString().split('T')[0],
-    });
-    this.streak = this.loadJSON(STORAGE_KEYS.STREAK, {
-      current: 1,
-      longest: 1,
-      lastActiveDate: new Date().toISOString().split('T')[0],
-    });
-    this.graph = this.loadJSON(STORAGE_KEYS.GRAPH, {});
-    this.updateStreakOnLoad();
-  }
-
-  private loadJSON<T>(key: string, fallback: T): T {
-    try {
-      const item = localStorage.getItem(key);
-      return item ? JSON.parse(item) : fallback;
-    } catch (e) {
-      return fallback;
-    }
-  }
-
-  private saveJSON(key: string, data: any): void {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch (e) {}
+  /** Вызывается экраном при монтировании, чтобы привязать операции к аккаунту. */
+  public setCurrentUserId(uid: string | null | undefined): void {
+    this.currentUserId = uid || 'guest';
   }
 
   public getTodayDateStr(): string {
     return new Date().toISOString().split('T')[0];
   }
 
-  // User Management
-  public getUser(): User | null {
-    return this.user;
+  // --- Плутчик-профиль ---
+
+  public getProfile(): Promise<PlutchikProfile> {
+    return getPlutchikProfile(this.currentUserId, defaultProfile());
   }
 
-  public setUser(user: User): void {
-    this.user = user;
-    this.saveJSON(STORAGE_KEYS.USER, user);
+  public async saveBaseline(baseline: PlutchikVector): Promise<PlutchikProfile> {
+    const profile = await this.getProfile();
+    profile.baseline = baseline;
+    profile.lastWeekly = baseline;
+    profile.lastWeeklyDate = this.getTodayDateStr();
+    return savePlutchikProfile(this.currentUserId, profile);
   }
 
-  // Settings Management
-  public getSettings(): CompassSettings {
-    return this.settings;
-  }
-
-  public updateSettings(newSettings: Partial<CompassSettings>): CompassSettings {
-    this.settings = { ...this.settings, ...newSettings };
-    this.saveJSON(STORAGE_KEYS.SETTINGS, this.settings);
-    return this.settings;
-  }
-
-  // Plutchik Profile
-  public getProfile(): PlutchikProfile {
-    return this.profile;
-  }
-
-  public saveBaseline(baseline: PlutchikVector): PlutchikProfile {
-    this.profile.baseline = baseline;
-    this.profile.lastWeekly = baseline;
-    this.profile.lastWeeklyDate = this.getTodayDateStr();
-    this.saveJSON(STORAGE_KEYS.PROFILE, this.profile);
-    return this.profile;
-  }
-
-  public updateWeeklyProfile(weekly: PlutchikVector): PlutchikProfile {
-    const oldWeekly = this.profile.lastWeekly || this.profile.baseline;
-    const trends: Record<EmotionKey, string> = { ...this.profile.trends };
+  public async updateWeeklyProfile(weekly: PlutchikVector): Promise<PlutchikProfile> {
+    const profile = await this.getProfile();
+    const oldWeekly = profile.lastWeekly || profile.baseline;
+    const trends: Record<EmotionKey, string> = { ...profile.trends };
 
     (Object.keys(weekly) as EmotionKey[]).forEach((key) => {
       const diff = Math.round((weekly[key] - oldWeekly[key]) * 100);
@@ -136,50 +94,35 @@ export class CompassService {
       else trends[key] = 'стабильно';
     });
 
-    this.profile.lastWeekly = weekly;
-    this.profile.trends = trends;
-    this.profile.lastWeeklyDate = this.getTodayDateStr();
-    this.saveJSON(STORAGE_KEYS.PROFILE, this.profile);
-    return this.profile;
+    profile.lastWeekly = weekly;
+    profile.trends = trends;
+    profile.lastWeeklyDate = this.getTodayDateStr();
+    return savePlutchikProfile(this.currentUserId, profile);
   }
 
-  // Streak & Feature Unlocking
-  public getStreak(): StreakInfo {
-    return this.streak;
+  // --- Streak и разблокировка фич ---
+
+  public getStreak(): Promise<StreakInfo> {
+    return getStreakInfo(this.currentUserId, defaultStreak());
   }
 
-  private updateStreakOnLoad(): void {
+  public async registerDailyActivity(): Promise<StreakInfo> {
+    const streak = await this.getStreak();
     const today = this.getTodayDateStr();
-    const lastActive = this.streak.lastActiveDate;
-
-    if (!lastActive) return;
-
-    const todayDate = new Date(today);
-    const lastDate = new Date(lastActive);
-    const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
-
-    if (diffDays > 1) {
-      // Missed days
-      this.streak.current = 0;
-      this.saveJSON(STORAGE_KEYS.STREAK, this.streak);
-    }
-  }
-
-  public registerDailyActivity(): StreakInfo {
-    const today = this.getTodayDateStr();
-    if (this.streak.lastActiveDate !== today) {
-      this.streak.current += 1;
-      if (this.streak.current > this.streak.longest) {
-        this.streak.longest = this.streak.current;
+    if (streak.lastActiveDate !== today) {
+      streak.current += 1;
+      if (streak.current > streak.longest) {
+        streak.longest = streak.current;
       }
-      this.streak.lastActiveDate = today;
-      this.saveJSON(STORAGE_KEYS.STREAK, this.streak);
+      streak.lastActiveDate = today;
+      return saveStreakInfo(this.currentUserId, streak);
     }
-    return this.streak;
+    return streak;
   }
 
-  public getUnlockedFeatures(): UnlockedFeatures {
-    const days = Math.max(1, this.streak.current);
+  public async getUnlockedFeatures(): Promise<UnlockedFeatures> {
+    const streak = await this.getStreak();
+    const days = Math.max(1, streak.current);
     return {
       morningRitual: true,
       eveningCheckin: days >= 3,
@@ -192,58 +135,52 @@ export class CompassService {
     };
   }
 
-  // Emotional Graph Entries
-  public getTodayEntry(): EmotionalGraphEntry | null {
-    const today = this.getTodayDateStr();
-    return this.graph[today] || null;
+  // --- Записи эмоционального графа ---
+
+  public getTodayEntry(): Promise<EmotionalGraphEntry | null> {
+    return getEmotionalGraphEntry(this.currentUserId, this.getTodayDateStr());
   }
 
-  public getRecentEntries(count: number = 7): EmotionalGraphEntry[] {
-    const sorted = Object.values(this.graph).sort((a, b) => b.timestamp - a.timestamp);
-    return sorted.slice(0, count);
+  public getRecentEntries(count = 7): Promise<EmotionalGraphEntry[]> {
+    return getEmotionalGraphEntries(this.currentUserId, count);
   }
 
-  public saveDailyEntry(entry: EmotionalGraphEntry): EmotionalGraphEntry {
-    this.graph[entry.date] = entry;
-    this.saveJSON(STORAGE_KEYS.GRAPH, this.graph);
-    this.registerDailyActivity();
-    return entry;
+  public async saveDailyEntry(entry: EmotionalGraphEntry): Promise<EmotionalGraphEntry> {
+    await this.registerDailyActivity();
+    return saveEmotionalGraphEntry(this.currentUserId, entry);
   }
 
-  public saveEveningFeedback(date: string, feedback: EveningFeedback): EmotionalGraphEntry | null {
-    if (this.graph[date]) {
-      this.graph[date].eveningFeedback = feedback;
-      this.saveJSON(STORAGE_KEYS.GRAPH, this.graph);
-      return this.graph[date];
-    }
-    return null;
+  public saveEveningFeedback(date: string, feedback: EveningFeedback): Promise<EmotionalGraphEntry | null> {
+    return saveEveningFeedbackFirestore(this.currentUserId, date, feedback);
   }
 
-  // Stuck Detection
-  public checkIsStuck(): boolean {
-    const entries = this.getRecentEntries(5);
+  // --- Stuck-детекция ---
+
+  public async checkIsStuck(): Promise<boolean> {
+    const entries = await this.getRecentEntries(5);
     if (entries.length < 3) return false;
 
     const negativeEmotions: EmotionKey[] = ['sadness', 'anger', 'fear', 'disgust'];
     let count = 0;
-
     for (const e of entries.slice(0, 3)) {
       if (negativeEmotions.includes(e.dominant) && e.eveningFeedback !== 'better') {
         count++;
       }
     }
-
     return count >= 3;
   }
 
-  // AI Synthesis Execution
+  // --- Синтез рекомендации (правила + LLM на сервере) ---
+
   public async generateAISynthesis(
     microInput: string,
     inputType: 'tap' | 'voice' = 'tap'
   ): Promise<EmotionalGraphEntry> {
     const today = this.getTodayDateStr();
-    const isStuck = this.checkIsStuck();
-    const recent = this.getRecentEntries(7);
+    const isStuck = await this.checkIsStuck();
+    const recent = await this.getRecentEntries(7);
+    const profile = await this.getProfile();
+    const streak = await this.getStreak();
 
     try {
       const response = await fetch('/api/ai/recommendation', {
@@ -252,12 +189,11 @@ export class CompassService {
         body: JSON.stringify({
           microInput,
           inputType,
-          plutchikProfile: this.profile,
+          plutchikProfile: profile,
           emotionalHistory: recent,
           context: {
-            streak: this.streak.current,
+            streak: streak.current,
             stuckFlag: isStuck,
-            timeOfDay: new Date().getHours() < 12 ? 'morning' : 'day',
             hour: new Date().getHours(),
           },
         }),
@@ -289,15 +225,15 @@ export class CompassService {
       console.warn('[CompassService] Server synthesis fallback triggered', e);
     }
 
-    // Smart Local Fallback
-    const fallbackEntry = this.generateLocalFallback(microInput, inputType, isStuck);
+    const fallbackEntry = this.generateLocalFallback(microInput, inputType, isStuck, profile.baseline);
     return this.saveDailyEntry(fallbackEntry);
   }
 
   private generateLocalFallback(
     microInput: string,
     inputType: 'tap' | 'voice',
-    isStuck: boolean
+    isStuck: boolean,
+    baseline: PlutchikVector
   ): EmotionalGraphEntry {
     const inputLower = microInput.toLowerCase();
     let dominant: EmotionKey = 'anticipation';
@@ -329,8 +265,8 @@ export class CompassService {
     }
 
     const inferred: PlutchikVector = {
-      ...this.profile.baseline,
-      [dominant]: Math.min(1.0, (this.profile.baseline[dominant] || 0.5) + 0.2),
+      ...baseline,
+      [dominant]: Math.min(1.0, (baseline[dominant] || 0.5) + 0.2),
     };
 
     return {
