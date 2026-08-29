@@ -81,6 +81,41 @@ export const cancelMorningMood = async () => {
     }
 };
 
+export const scheduleEveningRitual = async (timeStr: string, customBody?: string) => {
+    try {
+        await LocalNotifications.cancel({ notifications: [{ id: 5 }] });
+
+        const [hours, minutes] = timeStr.split(':').map(Number);
+
+        await LocalNotifications.schedule({
+            notifications: [
+                {
+                    title: '🌙 Вечерний ритуал',
+                    body: customBody || 'Итоги дня и бережное завершение. Откройте приложение для вечернего чек-ина.',
+                    id: 5,
+                    schedule: {
+                        on: {
+                            hour: hours,
+                            minute: minutes
+                        },
+                        allowWhileIdle: true
+                    },
+                }
+            ]
+        });
+    } catch (error) {
+        console.error('Error scheduling evening ritual', error);
+    }
+};
+
+export const cancelEveningRitual = async () => {
+    try {
+        await LocalNotifications.cancel({ notifications: [{ id: 5 }] });
+    } catch (error) {
+        console.error('Error canceling evening ritual', error);
+    }
+};
+
 export const scheduleWeeklyReport = async () => {
     try {
         await LocalNotifications.cancel({ notifications: [{ id: 3 }] });

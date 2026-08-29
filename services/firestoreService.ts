@@ -363,6 +363,25 @@ export const savePlutchikProfile = async (userId: string, profile: PlutchikProfi
   return profile;
 };
 
+/**
+ * Признак завершённого онбординга: сохранён ли базовый профиль Плутчика.
+ * Проверяем локальный кеш, затем Firestore. `true` — профиль есть (онбординг пройден).
+ */
+export const hasPlutchikProfile = async (userId: string): Promise<boolean> => {
+  const local = readLocal<PlutchikProfile | null>(profileKey(userId), null);
+  if (local) return true;
+
+  if (userId && userId !== 'guest') {
+    try {
+      const snap = await withTimeout(getDoc(doc(db, 'plutchikProfiles', userId)), 1500);
+      return snap.exists();
+    } catch (e) {
+      console.warn('Firestore profile check failed:', e);
+    }
+  }
+  return false;
+};
+
 // --- streaks ---
 
 export const getStreakInfo = async (userId: string, fallback: StreakInfo): Promise<StreakInfo> => {

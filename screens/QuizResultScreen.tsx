@@ -82,9 +82,9 @@ const QuizResultScreen: React.FC = () => {
     if (!result) {
         return (
             <div className="flex flex-col items-center justify-center h-screen p-6 text-center bg-background-light dark:bg-background-dark">
-                <p className="text-lg text-forest dark:text-gray-300">Результат не найден. Пожалуйста, пройдите опрос снова.</p>
-                <button onClick={() => navigate('/quiz-intro')} className="mt-6 px-6 py-3 bg-primary text-forest font-bold rounded-xl shadow-lg">
-                    Пройти опрос
+                <p className="text-lg text-forest dark:text-gray-300">Результат не найден.</p>
+                <button onClick={() => navigate('/')} className="mt-6 px-6 py-3 bg-primary text-forest font-bold rounded-xl shadow-lg">
+                    На главную
                 </button>
             </div>
         );
