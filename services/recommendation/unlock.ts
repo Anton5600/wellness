@@ -4,7 +4,6 @@ import { UnlockedFeatures } from '../../types';
 export const UNLOCK_DAYS = {
   eveningCheckin: 3,
   mapDay: 5,
-  weeklyCheck: 7,
   cards: 10,
   patterns: 14,
   catalog: 21,
@@ -21,7 +20,6 @@ export function computeUnlockedFeatures(days: number): UnlockedFeatures {
     morningRitual: true,
     eveningCheckin: d >= UNLOCK_DAYS.eveningCheckin,
     mapDay: d >= UNLOCK_DAYS.mapDay,
-    weeklyCheck: d >= UNLOCK_DAYS.weeklyCheck,
     cards: d >= UNLOCK_DAYS.cards,
     patterns: d >= UNLOCK_DAYS.patterns,
     catalog: d >= UNLOCK_DAYS.catalog,

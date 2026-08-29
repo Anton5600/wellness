@@ -83,24 +83,6 @@ export class CompassService {
     return savePlutchikProfile(this.currentUserId, profile);
   }
 
-  public async updateWeeklyProfile(weekly: PlutchikVector): Promise<PlutchikProfile> {
-    const profile = await this.getProfile();
-    const oldWeekly = profile.lastWeekly || profile.baseline;
-    const trends: Record<EmotionKey, string> = { ...profile.trends };
-
-    (Object.keys(weekly) as EmotionKey[]).forEach((key) => {
-      const diff = Math.round((weekly[key] - oldWeekly[key]) * 100);
-      if (diff > 5) trends[key] = `рост на +${diff}%`;
-      else if (diff < -5) trends[key] = `снижение на ${diff}%`;
-      else trends[key] = 'стабильно';
-    });
-
-    profile.lastWeekly = weekly;
-    profile.trends = trends;
-    profile.lastWeeklyDate = this.getTodayDateStr();
-    return savePlutchikProfile(this.currentUserId, profile);
-  }
-
   // --- Streak и разблокировка фич ---
 
   public getStreak(): Promise<StreakInfo> {

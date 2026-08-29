@@ -105,7 +105,6 @@ export interface UnlockedFeatures {
   morningRitual: boolean;
   eveningCheckin: boolean;
   mapDay: boolean;
-  weeklyCheck: boolean;
   cards: boolean;
   patterns: boolean;
   catalog: boolean;

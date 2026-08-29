@@ -297,6 +297,7 @@ const DashboardScreen: React.FC = () => {
           <span className="material-symbols-outlined text-white">chevron_right</span>
         </button>
 
+        {(loading || latestEmotion) && (
         <div className="p-6 flex flex-col rounded-2xl shadow-lg bg-white dark:bg-[#1a2d18] border border-[#e2e8e1] dark:border-sage/30">
           {loading ? (
              <div className="animate-pulse">
@@ -320,7 +321,7 @@ const DashboardScreen: React.FC = () => {
                 ))}
               </div>
             </div>
-          ) : latestEmotion ? (
+          ) : (
             <>
               <div className="flex items-center gap-4 mb-4">
                 <div className="relative">
@@ -349,14 +350,9 @@ const DashboardScreen: React.FC = () => {
                 })}
               </div>
             </>
-          ) : (
-             <div className="text-center text-sage py-8 flex flex-col items-center">
-                <span className="material-symbols-outlined text-5xl text-primary mb-4">quiz</span>
-                <p className="font-semibold text-forest dark:text-white">Определите свое состояние</p>
-                <p className="text-sm mt-1">Пройдите опрос, чтобы получить персональные рекомендации.</p>
-             </div>
           )}
         </div>
+        )}
 
         {/* Personalized Aroma Support Widget */}
         <AromaMoodWidget history={history} />

@@ -273,20 +273,6 @@ export const CheckInScreen: React.FC = () => {
           </>
         )}
 
-        {/* Weekly deep check */}
-        <button
-          onClick={() => navigate('/weekly-check')}
-          className="w-full flex items-center justify-between bg-primary/10 dark:bg-primary/5 rounded-2xl p-4 border border-primary/20 hover:bg-primary/20 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary text-2xl">insights</span>
-            <div className="text-left">
-              <p className="font-bold text-forest dark:text-white">Еженедельный глубокий замер</p>
-              <p className="text-xs text-sage dark:text-gray-400">8 шкал эмоций для уточнения профиля</p>
-            </div>
-          </div>
-          <span className="material-symbols-outlined text-sage">chevron_right</span>
-        </button>
       </main>
 
       <AromaBreathingModal
