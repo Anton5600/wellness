@@ -44,11 +44,6 @@ const BottomNavBar: React.FC = () => {
             />
         ))}
       </div>
-      <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-20">
-          <Link to="/quiz-intro" className="flex items-center justify-center size-14 bg-primary text-white rounded-full shadow-lg shadow-primary/30 active:scale-95 transition-transform">
-              <span className="material-symbols-outlined text-3xl">add</span>
-          </Link>
-      </div>
        <div className="flex justify-center pb-2">
             <div className="w-32 h-1 bg-black/20 dark:bg-white/20 rounded-full"></div>
        </div>

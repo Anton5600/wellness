@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { CartProvider } from './context/CartContext';
 import SignInScreen from './screens/SignInScreen';
 import DashboardScreen from './screens/DashboardScreen';
-import QuizIntroScreen from './screens/QuizIntroScreen';
 import QuizQuestionScreen from './screens/QuizQuestionScreen';
 import QuizResultScreen from './screens/QuizResultScreen';
+import RitualSetupScreen from './screens/RitualSetupScreen';
+import OnboardingResultScreen from './screens/OnboardingResultScreen';
 import HistoryScreen from './screens/HistoryScreen';
 import ProgressScreen from './screens/ProgressScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
@@ -30,6 +31,8 @@ import CartScreen from './screens/CartScreen';
 import SymbolsDictionaryScreen from './screens/SymbolsDictionaryScreen';
 import LegalScreen from './screens/LegalScreen';
 import { myTrackerService } from './services/myTrackerService';
+import { compassService } from './services/compassService';
+import { hasPlutchikProfile } from './services/firestoreService';
 
 const BackButtonHandler: React.FC = () => {
   const navigate = useNavigate();
@@ -110,6 +113,43 @@ const App: React.FC = () => {
   );
 };
 
+/**
+ * Гейт онбординга нового пользователя. Пока базовый профиль Плутчика не сохранён,
+ * любой защищённый экран перенаправляется на настройку ритуалов. Проверка по
+ * локальному кешу, затем по Firestore (`plutchikProfiles/{uid}`).
+ */
+const RequireOnboarding: React.FC = () => {
+  const { user } = useAuth();
+  const [status, setStatus] = useState<'checking' | 'done' | 'needed'>('checking');
+
+  useEffect(() => {
+    let active = true;
+    if (!user) {
+      setStatus('done');
+      return;
+    }
+    compassService.setCurrentUserId(user.uid);
+    hasPlutchikProfile(user.uid).then((has) => {
+      if (active) setStatus(has ? 'done' : 'needed');
+    });
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  if (status === 'checking') {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-background-light dark:bg-background-dark">
+        <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+  if (status === 'needed') {
+    return <Navigate to="/rituals" replace />;
+  }
+  return <Outlet />;
+};
+
 const AppRoutes: React.FC = () => {
   const { user, loading } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
@@ -172,27 +212,33 @@ const AppRoutes: React.FC = () => {
         <Route path="/legal/:documentType" element={<LegalScreen />} />
         {user ? (
           <>
-            <Route path="/" element={<DashboardScreen />} />
-            <Route path="/quiz-intro" element={<QuizIntroScreen />} />
+            {/* Онбординг нового пользователя: ритуалы → квиз Плутчика → результат */}
+            <Route path="/rituals" element={<RitualSetupScreen />} />
             <Route path="/quiz" element={<QuizQuestionScreen />} />
-            <Route path="/result" element={<QuizResultScreen />} />
-            <Route path="/history" element={<HistoryScreen />} />
-            <Route path="/progress" element={<ProgressScreen />} />
-            <Route path="/cabinet" element={<CabinetScreen />} />
-            <Route path="/cart" element={<CartScreen />} />
-            <Route path="/profile" element={<ProfileScreen />} />
-            <Route path="/security" element={<SecurityScreen />} />
-            <Route path="/notifications" element={<NotificationsScreen />} />
-            <Route path="/check-in" element={<CheckInScreen />} />
-            <Route path="/weekly-check" element={<WeeklyCheckScreen />} />
-            <Route path="/resources" element={<ResourcesScreen />} />
-            <Route path="/admin" element={<AdminScreen />} />
-            <Route path="/admin-oils" element={<AdminOilsScreen />} />
-            <Route path="/admin-orders" element={<AdminOrdersScreen />} />
-            <Route path="/admin-cards" element={<AdminCardsScreen />} />
-            <Route path="/symbols-dictionary" element={<SymbolsDictionaryScreen />} />
+            <Route path="/onboarding-result" element={<OnboardingResultScreen />} />
             <Route path="/verify-email" element={<VerifyEmailScreen />} />
-            <Route path="*" element={<Navigate to="/" />} />
+
+            {/* Основное приложение (доступно после онбординга) */}
+            <Route element={<RequireOnboarding />}>
+              <Route path="/" element={<DashboardScreen />} />
+              <Route path="/result" element={<QuizResultScreen />} />
+              <Route path="/history" element={<HistoryScreen />} />
+              <Route path="/progress" element={<ProgressScreen />} />
+              <Route path="/cabinet" element={<CabinetScreen />} />
+              <Route path="/cart" element={<CartScreen />} />
+              <Route path="/profile" element={<ProfileScreen />} />
+              <Route path="/security" element={<SecurityScreen />} />
+              <Route path="/notifications" element={<NotificationsScreen />} />
+              <Route path="/check-in" element={<CheckInScreen />} />
+              <Route path="/weekly-check" element={<WeeklyCheckScreen />} />
+              <Route path="/resources" element={<ResourcesScreen />} />
+              <Route path="/admin" element={<AdminScreen />} />
+              <Route path="/admin-oils" element={<AdminOilsScreen />} />
+              <Route path="/admin-orders" element={<AdminOrdersScreen />} />
+              <Route path="/admin-cards" element={<AdminCardsScreen />} />
+              <Route path="/symbols-dictionary" element={<SymbolsDictionaryScreen />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Route>
           </>
         ) : (
           <>

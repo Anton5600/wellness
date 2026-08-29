@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-    requestPermissions, 
-    scheduleDailyReminder, 
+import {
+    requestPermissions,
+    scheduleDailyReminder,
     cancelDailyReminder,
     scheduleMorningMood,
     cancelMorningMood,
+    scheduleEveningRitual,
+    cancelEveningRitual,
     scheduleWeeklyReport,
     cancelWeeklyReport,
     scheduleStuckReminder,
@@ -26,7 +28,10 @@ const NotificationsScreen: React.FC = () => {
     
     const [morningMood, setMorningMood] = useState(false);
     const [morningTime, setMorningTime] = useState('08:00');
-    
+
+    const [eveningRitual, setEveningRitual] = useState(false);
+    const [eveningTime, setEveningTime] = useState('21:00');
+
     const [weeklyReport, setWeeklyReport] = useState(false);
 
     useEffect(() => {
@@ -39,6 +44,8 @@ const NotificationsScreen: React.FC = () => {
                 setStuckReminder(parsed.stuckReminder ?? false);
                 setMorningMood(parsed.morningMood ?? false);
                 setMorningTime(parsed.morningTime ?? '08:00');
+                setEveningRitual(parsed.eveningRitual ?? false);
+                setEveningTime(parsed.eveningTime ?? '21:00');
                 setWeeklyReport(parsed.weeklyReport ?? false);
             }
         }
@@ -70,15 +77,21 @@ const NotificationsScreen: React.FC = () => {
                 cancelStuckReminder();
             }
         }
-        if (key === 'morningMood') { 
-            setMorningMood(value); 
-            newPrefs = { morningMood: value }; 
+        if (key === 'morningMood') {
+            setMorningMood(value);
+            newPrefs = { morningMood: value };
             if (value) {
                 const rec = await getAromaRecommendation(history, 'morning');
                 scheduleMorningMood(morningTime, `☀️ Утренний настрой: рекомендуем ${rec.oilName} (${rec.badge}). Нажмите для 1-мин арома-ингаляции!`);
             } else {
                 cancelMorningMood();
             }
+        }
+        if (key === 'eveningRitual') {
+            setEveningRitual(value);
+            newPrefs = { eveningRitual: value };
+            if (value) scheduleEveningRitual(eveningTime);
+            else cancelEveningRitual();
         }
         if (key === 'weeklyReport') { 
             setWeeklyReport(value); 
@@ -100,10 +113,15 @@ const NotificationsScreen: React.FC = () => {
             newPrefs = { dailyTime: value }; 
             if (dailyReminder) scheduleDailyReminder(value);
         }
-        if (key === 'morningTime') { 
-            setMorningTime(value); 
-            newPrefs = { morningTime: value }; 
+        if (key === 'morningTime') {
+            setMorningTime(value);
+            newPrefs = { morningTime: value };
             if (morningMood) scheduleMorningMood(value);
+        }
+        if (key === 'eveningTime') {
+            setEveningTime(value);
+            newPrefs = { eveningTime: value };
+            if (eveningRitual) scheduleEveningRitual(value);
         }
         
         if (user) {
@@ -176,10 +194,32 @@ const NotificationsScreen: React.FC = () => {
                     {morningMood && (
                         <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
                             <span className="text-forest dark:text-white font-medium">Время напоминания</span>
-                            <input 
-                                type="time" 
+                            <input
+                                type="time"
                                 value={morningTime}
                                 onChange={(e) => handleTimeChange('morningTime', e.target.value)}
+                                className="bg-gray-100 dark:bg-gray-800 text-forest dark:text-white px-3 py-1.5 rounded-lg font-medium outline-none"
+                            />
+                        </div>
+                    )}
+                </div>
+
+                {/* Вечерний ритуал */}
+                <div className="bg-white dark:bg-[#1f1f1f] rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center justify-between">
+                        <div className="pr-4">
+                            <h3 className="font-bold text-forest dark:text-white text-lg">Вечерний ритуал</h3>
+                            <p className="text-sage dark:text-gray-400 text-sm mt-1">Итоги дня и бережное завершение.</p>
+                        </div>
+                        <Toggle enabled={eveningRitual} onChange={() => handleToggle('eveningRitual', !eveningRitual)} />
+                    </div>
+                    {eveningRitual && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                            <span className="text-forest dark:text-white font-medium">Время напоминания</span>
+                            <input
+                                type="time"
+                                value={eveningTime}
+                                onChange={(e) => handleTimeChange('eveningTime', e.target.value)}
                                 className="bg-gray-100 dark:bg-gray-800 text-forest dark:text-white px-3 py-1.5 rounded-lg font-medium outline-none"
                             />
                         </div>

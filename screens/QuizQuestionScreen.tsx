@@ -3,14 +3,15 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QUIZ_QUESTIONS } from '../constants';
 import { EmotionKey } from '../types';
-import { calculateResult } from '../services/quizService';
-import { saveEmotionHistory } from '../services/firestoreService';
+import { vectorFromAnswers } from '../services/quizService';
+import { compassService } from '../services/compassService';
 import { useAuth } from '../context/AuthContext';
 
 const QuizQuestionScreen: React.FC = () => {
     const [currentStep, setCurrentStep] = useState(0);
     const [answers, setAnswers] = useState<EmotionKey[]>([]);
     const [selectedAnswer, setSelectedAnswer] = useState<EmotionKey | null>(null);
+    const [saving, setSaving] = useState(false);
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -22,23 +23,27 @@ const QuizQuestionScreen: React.FC = () => {
     };
 
     const handleContinue = async () => {
-        if (!selectedAnswer) return;
+        if (!selectedAnswer || saving) return;
 
         const newAnswers = [...answers, selectedAnswer];
         setAnswers(newAnswers);
-        
+
         if (currentStep < QUIZ_QUESTIONS.length - 1) {
             setCurrentStep(currentStep + 1);
             setSelectedAnswer(null);
         } else {
-            const result = calculateResult(newAnswers);
+            // Онбординг: из ответов строим стартовый вектор Плутчика и сохраняем
+            // его как baseline — это одновременно и «отметка» о пройденном онбординге.
+            setSaving(true);
             try {
-                const userId = user?.uid || 'guest';
-                await saveEmotionHistory(userId, result.key);
+                const baseline = vectorFromAnswers(newAnswers);
+                compassService.setCurrentUserId(user?.uid);
+                await compassService.saveBaseline(baseline);
+                navigate('/onboarding-result', { replace: true });
             } catch (error) {
-                console.error("Ошибка при сохранении истории:", error);
+                console.error('Ошибка при сохранении стартового профиля:', error);
+                setSaving(false);
             }
-            navigate('/result', { state: { result } });
         }
     };
 
@@ -87,11 +92,11 @@ const QuizQuestionScreen: React.FC = () => {
             </main>
 
             <footer className="p-6 pb-[calc(10vh+env(safe-area-inset-bottom))] bg-transparent mt-auto">
-                <button 
-                    onClick={handleContinue} 
-                    disabled={!selectedAnswer}
+                <button
+                    onClick={handleContinue}
+                    disabled={!selectedAnswer || saving}
                     className="w-full flex h-14 items-center justify-center rounded-xl bg-primary text-forest text-lg font-extrabold shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]">
-                    <span>Продолжить</span>
+                    <span>{saving ? 'Сохраняем…' : 'Продолжить'}</span>
                 </button>
             </footer>
         </div>
