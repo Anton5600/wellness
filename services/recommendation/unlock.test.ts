@@ -7,7 +7,6 @@ describe('computeUnlockedFeatures', () => {
     expect(f.morningRitual).toBe(true);
     expect(f.eveningCheckin).toBe(false);
     expect(f.mapDay).toBe(false);
-    expect(f.weeklyCheck).toBe(false);
     expect(f.cards).toBe(false);
     expect(f.patterns).toBe(false);
     expect(f.catalog).toBe(false);
@@ -23,7 +22,6 @@ describe('computeUnlockedFeatures', () => {
     expect(computeUnlockedFeatures(3).eveningCheckin).toBe(true);
     expect(computeUnlockedFeatures(4).mapDay).toBe(false);
     expect(computeUnlockedFeatures(5).mapDay).toBe(true);
-    expect(computeUnlockedFeatures(7).weeklyCheck).toBe(true);
     expect(computeUnlockedFeatures(10).cards).toBe(true);
     expect(computeUnlockedFeatures(14).patterns).toBe(true);
     expect(computeUnlockedFeatures(21).catalog).toBe(true);
