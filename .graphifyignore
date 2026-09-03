@@ -1,0 +1,7 @@
+# Graphify corpus: app code only (exclude generated shells, AI art, config noise)
+android/
+ios/
+public/cards/
+.claude/
+assets/
+*.docx

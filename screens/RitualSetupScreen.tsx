@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { TimeWheelPicker } from '../components/TimeWheelPicker';
+import { compassService } from '../services/compassService';
 import {
   requestPermissions,
   scheduleMorningMood,
@@ -13,11 +14,16 @@ const RitualSetupScreen: React.FC = () => {
   const { user } = useAuth();
   const [morningTime, setMorningTime] = useState('08:00');
   const [eveningTime, setEveningTime] = useState('21:00');
+  const [preferredInput, setPreferredInput] = useState<'tap' | 'voice'>('tap');
   const [saving, setSaving] = useState(false);
 
   const handleContinue = async () => {
     setSaving(true);
     const uid = user?.uid || 'guest';
+
+    // Сохраняем предпочтительный способ ввода в ежедневном ритуале.
+    compassService.setCurrentUserId(uid);
+    compassService.savePreferredInput(preferredInput);
 
     // Сохраняем время ритуалов и включаем соответствующие напоминания
     // (утренний настрой + вечерний чек-ин) — единый контур с экраном уведомлений.
@@ -91,6 +97,40 @@ const RitualSetupScreen: React.FC = () => {
             </div>
             <div className="mt-5 flex justify-center">
               <TimeWheelPicker value={eveningTime} onChange={setEveningTime} />
+            </div>
+          </section>
+
+          <section className="rounded-2xl bg-white dark:bg-[#1f1f1f] border border-gray-100 dark:border-gray-800 p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary text-3xl">edit_note</span>
+              <div>
+                <h3 className="font-bold text-forest dark:text-white text-lg">Как делиться состоянием?</h3>
+                <p className="text-sage dark:text-gray-400 text-sm">Можно изменить в любой момент</p>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setPreferredInput('tap')}
+                className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm border-2 transition-all ${
+                  preferredInput === 'tap'
+                    ? 'border-primary bg-primary/10 text-forest dark:text-white'
+                    : 'border-gray-200 dark:border-gray-700 text-sage dark:text-gray-400'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">edit</span>
+                Писать
+              </button>
+              <button
+                onClick={() => setPreferredInput('voice')}
+                className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm border-2 transition-all ${
+                  preferredInput === 'voice'
+                    ? 'border-primary bg-primary/10 text-forest dark:text-white'
+                    : 'border-gray-200 dark:border-gray-700 text-sage dark:text-gray-400'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">mic</span>
+                Говорить
+              </button>
             </div>
           </section>
         </div>

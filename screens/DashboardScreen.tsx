@@ -3,15 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../context/AuthContext';
-import { getEmotionHistory } from '../services/firestoreService';
-import { EmotionHistoryEntry } from '../types';
+import { EmotionalGraphEntry } from '../types';
 import { EMOTIONS } from '../constants';
 import BottomNavBar from '../components/BottomNavBar';
 import { useCart } from '../context/CartContext';
 import { METAPHORIC_CARDS, MetaphoricCard } from '../data/cards';
 import { getQuoteForDay, getRandomQuote } from '../data/quotes';
-import { AromaMoodWidget } from '../components/AromaMoodWidget';
+import DailyRitual from '../components/DailyRitual';
 import { FeatureLock } from '../components/FeatureLock';
+import { StreakDayScroller } from '../components/StreakDayScroller';
+import { DevBridgeTester } from '../components/DevBridgeTester';
 import { useUnlockedFeatures, FEATURE_DAYS } from '../hooks/useUnlockedFeatures';
 import { compassService } from '../services/compassService';
 import { initNotificationListeners } from '../services/notificationService';
@@ -49,7 +50,7 @@ const CartIcon: React.FC<{ navigate: any }> = ({ navigate }) => {
 const DashboardScreen: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [history, setHistory] = useState<EmotionHistoryEntry[]>([]);
+  const [history, setHistory] = useState<EmotionalGraphEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<{text: string, author: string} | null>(getQuoteForDay());
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -63,6 +64,7 @@ const DashboardScreen: React.FC = () => {
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [loadingPhrase, setLoadingPhrase] = useState(LOADING_PHRASES[0]);
   const [isStuck, setIsStuck] = useState(false);
+  const [dayColor, setDayColor] = useState<string | undefined>();
   const { features, streak } = useUnlockedFeatures();
 
   useEffect(() => {
@@ -110,12 +112,15 @@ const DashboardScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    initNotificationListeners(() => {
-      const widget = document.getElementById('aroma-widget');
-      if (widget) {
-        widget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
+    initNotificationListeners(
+      () => {
+        const ritual = document.getElementById('daily-ritual');
+        if (ritual) {
+          ritual.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      },
+      (practiceId) => navigate(`/practice/${practiceId}`)
+    );
   }, []);
 
   useEffect(() => {
@@ -135,8 +140,8 @@ const DashboardScreen: React.FC = () => {
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        const userId = user?.uid || 'guest';
-        const userHistory = await getEmotionHistory(userId);
+        compassService.setCurrentUserId(user?.uid);
+        const userHistory = await compassService.getHistory();
         setHistory(userHistory);
       } catch (error) {
         console.error("Failed to load history:", error);
@@ -153,10 +158,28 @@ const DashboardScreen: React.FC = () => {
     compassService.checkIsStuck().then((stuck) => {
       if (!cancelled) setIsStuck(stuck);
     });
+    compassService.getRecentEntries(1).then((entries) => {
+      if (!cancelled && entries[0]?.color) setDayColor(entries[0].color);
+    });
     return () => { cancelled = true; };
   }, [user?.uid]);
 
-  const latestEmotion = history.length > 0 ? EMOTIONS[history[0].emotionKey] : null;
+  // Гейт «Утреннего моста»: если сегодняшнего ритуала ещё нет и мост сегодня не показан —
+  // уводим на экран входа. После моста (маркер стоит) остаёмся на дашборде.
+  useEffect(() => {
+    if (!user) return;
+    compassService.setCurrentUserId(user.uid);
+    let cancelled = false;
+    compassService.getTodayEntry().then((entry) => {
+      if (cancelled) return;
+      if (entry === null && !compassService.isBridgeShownToday()) {
+        navigate('/entry');
+      }
+    });
+    return () => { cancelled = true; };
+  }, [user?.uid, navigate]);
+
+  const latestEmotion = history.length > 0 ? EMOTIONS[history[0].dominant] : null;
 
   const formatDate = (timestamp: number) => {
       const date = new Date(timestamp);
@@ -247,7 +270,12 @@ const DashboardScreen: React.FC = () => {
 
   return (
     <div className="pb-28 bg-background-light dark:bg-background-dark min-h-[100dvh]">
-      <header className="flex items-center p-6 pb-2 justify-between">
+      <header
+        className="flex items-center p-6 pb-2 justify-between"
+        style={dayColor && /^#[0-9a-f]{6}$/i.test(dayColor)
+          ? { background: `linear-gradient(180deg, ${dayColor}1f, transparent)` }
+          : undefined}
+      >
         <div className="flex items-center gap-4">
           <div className="flex size-12 shrink-0 items-center">
               <div className="bg-center bg-no-repeat aspect-square w-full bg-cover rounded-full border-2 border-primary" style={{backgroundImage: `url("https://storage.googleapis.com/aida-static/doterra/avatar.jpg")`}}></div>
@@ -268,6 +296,12 @@ const DashboardScreen: React.FC = () => {
         </div>
       </header>
 
+      {/* Dev-only: ползунок дня стрика для ручного прогона всех порогов разблокировок */}
+      <StreakDayScroller />
+
+      {/* Dev-only: панель теста сценариев «Утреннего моста» (временная) */}
+      <DevBridgeTester />
+
       <section className="px-6 py-6 space-y-4">
         {isStuck && (
           <button
@@ -283,19 +317,10 @@ const DashboardScreen: React.FC = () => {
           </button>
         )}
 
-        <button
-          onClick={() => navigate('/check-in')}
-          className="w-full flex items-center justify-between bg-gradient-to-r from-primary to-emerald-500 rounded-2xl p-5 shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform"
-        >
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-white text-3xl">psychology_alt</span>
-            <div className="text-left">
-              <p className="text-white font-extrabold text-base">Проверка состояния</p>
-              <p className="text-white/85 text-xs">Опишите чувства — подберём масло дня</p>
-            </div>
-          </div>
-          <span className="material-symbols-outlined text-white">chevron_right</span>
-        </button>
+        {/* Ежедневный ритуал — точка входа: микро-ввод → AI → дыхание → награда */}
+        <div id="daily-ritual">
+          <DailyRitual />
+        </div>
 
         {(loading || latestEmotion) && (
         <div className="p-6 flex flex-col rounded-2xl shadow-lg bg-white dark:bg-[#1a2d18] border border-[#e2e8e1] dark:border-sage/30">
@@ -337,9 +362,9 @@ const DashboardScreen: React.FC = () => {
               <div className="space-y-3 pt-4 border-t border-dashed border-[#e2e8e1] dark:border-sage/30">
                 <h4 className="text-forest dark:text-white font-bold text-sm">Недавняя активность:</h4>
                 {history.slice(1, 4).map(entry => {
-                    const emotion = EMOTIONS[entry.emotionKey];
+                    const emotion = EMOTIONS[entry.dominant];
                     return (
-                         <div key={entry.id} className="flex items-center justify-between">
+                         <div key={entry.date} className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className={`size-2 rounded-full ${emotion.color}`}></div>
                                 <p className="text-sm font-medium text-forest dark:text-[#e0e0e0]">{emotion.title}</p>
@@ -354,8 +379,6 @@ const DashboardScreen: React.FC = () => {
         </div>
         )}
 
-        {/* Personalized Aroma Support Widget */}
-        <AromaMoodWidget history={history} />
       </section>
       
        <section className="grid grid-cols-2 gap-4 px-6 pb-4">
@@ -375,20 +398,11 @@ const DashboardScreen: React.FC = () => {
                     <p className="text-forest dark:text-white text-base font-extrabold leading-tight">Динамика</p>
                 </div>
             </Link>
-            <Link to="/cabinet" className="col-span-2 bg-beige-soft dark:bg-wood/30 flex items-center justify-between p-4 rounded-2xl relative overflow-hidden group">
-                <div className="flex items-center gap-4 z-10">
-                    <div className="bg-white/90 dark:bg-black/20 backdrop-blur rounded-lg p-2">
-                        <span className="material-symbols-outlined text-wood dark:text-amber-100">medication</span>
-                    </div>
-                    <p className="text-forest dark:text-white text-base font-extrabold leading-tight">Моя аптечка</p>
-                </div>
-                <span className="material-symbols-outlined text-sage">chevron_right</span>
-            </Link>
         </section>
 
       <section className="px-6 pb-8">
         <h3 className="text-forest dark:text-white text-lg font-bold leading-tight tracking-tight mb-4">Карта дня</h3>
-        <FeatureLock unlocked={features?.cards ?? false} title="Карта дня" dayRequired={FEATURE_DAYS.cards} currentDay={streak?.current ?? 0}>
+        <FeatureLock unlocked={features?.cards ?? false} title="Карта дня" dayRequired={FEATURE_DAYS.cards} currentDay={streak?.longest ?? 0}>
         {!cardRevealed ? (
             <div 
                 onClick={drawCard}

@@ -9,7 +9,10 @@ import {
   DEFAULT_PLUTCHIK,
   EMOTION_LABELS,
 } from "./services/recommendation/inference";
-import { OilEntry } from "./types";
+import { breathingPatternFor } from "./services/recommendation/breathing";
+import { colorForDominant, isValidHexColor, EMOTION_HEX } from "./services/recommendation/color";
+import { detectCrisis } from "./services/recommendation/safety";
+import { OilEntry, EmotionKey, EffectMode } from "./types";
 
 // --- Recommendation engine (rules → DeepSeek/Gemini → strict JSON) ---
 
@@ -40,16 +43,48 @@ function parseLooseJson(text: string): Record<string, unknown> | null {
   return null;
 }
 
-const defaultAromaReason = (oil: OilEntry, dominantLabel: string): string =>
-  `«${oil.name}» мягко поддерживает состояние «${dominantLabel.toLowerCase()}». ${oil.description}`;
+/** Извлекает из распарсенного JSON LLM поля выбора масла (с валидацией цвета). */
+const toSelection = (parsed: Record<string, unknown> | null): OilSelection | null => {
+  if (!parsed || typeof parsed.oilId !== "string") return null;
+  return {
+    oilId: parsed.oilId,
+    aromaReason: typeof parsed.aromaReason === "string" ? parsed.aromaReason : "",
+    insight: typeof parsed.insight === "string" ? parsed.insight : "",
+    color: isValidHexColor(parsed.color) ? parsed.color : undefined,
+    tomorrowTeaser:
+      typeof parsed.tomorrowTeaser === "string" && parsed.tomorrowTeaser.trim()
+        ? parsed.tomorrowTeaser.trim()
+        : undefined,
+  };
+};
+
+/** Глагол действия масла по режиму эффекта — вместо сырого маркетингового описания. */
+const MODE_REASON: Record<EffectMode, string> = {
+  awaken: 'добавляет энергии и ясности',
+  calm: 'помогает успокоиться и расслабиться',
+  balance: 'помогает вернуть внутреннее равновесие',
+  support: 'мягко поддерживает и даёт опору',
+};
+
+/** Режим действия масла на доминирующую эмоцию; нет эффекта — «баланс» по умолчанию. */
+const modeFor = (oil: OilEntry, dominant: EmotionKey): EffectMode =>
+  oil.effects.find((eff) => eff.emotion === dominant)?.mode ?? 'balance';
+
+const defaultAromaReason = (oil: OilEntry, dominant: EmotionKey): string =>
+  `«${oil.name}» ${MODE_REASON[modeFor(oil, dominant)]} — то, что нужно для состояния «${EMOTION_LABELS[dominant].toLowerCase()}».`;
 
 const defaultInsight = (oil: OilEntry): string =>
   `Сделайте несколько спокойных вдохов с «${oil.name}» и вернитесь к себе. ${oil.instruction}`;
+
+const defaultTomorrowTeaser = (dominantLabel: string): string =>
+  `Завтра продолжим мягкое наблюдение за состоянием «${dominantLabel.toLowerCase()}» — Компас подскажет следующий шаг.`;
 
 interface OilSelection {
   oilId: string;
   aromaReason: string;
   insight: string;
+  color?: string;
+  tomorrowTeaser?: string;
 }
 
 async function selectOilWithLLM(
@@ -61,11 +96,16 @@ async function selectOilWithLLM(
     .map((o) => `- id: ${o.id} | ${o.name} — ${o.description} (${o.instruction})`)
     .join("\n");
 
+  const palette = Object.entries(EMOTION_HEX)
+    .map(([emotion, hex]) => `${EMOTION_LABELS[emotion as EmotionKey]} ${hex}`)
+    .join(", ");
+
   const system =
     "Ты — эмпатичный ароматерапевт в приложении «Внутренний Компас». " +
     "Выбери РОВНО одно эфирное масло из предложенного списка (по полю id), " +
     "которое наилучшим образом поддержит текущее состояние пользователя. " +
-    "Не выдумывай масла, которых нет в списке.";
+    "Не выдумывай масла, которых нет в списке. " +
+    "Подбери «цвет дня» строго из палитры эмоций и напиши короткий интригующий тизер на завтра.";
 
   const user = [
     `Текущее состояние пользователя: «${dominantLabel}».`,
@@ -74,7 +114,9 @@ async function selectOilWithLLM(
     "Доступные масла (шорт-лист):",
     summary,
     "",
-    'Ответь строго одним JSON-объектом без markdown: {"oilId":"<id>","aromaReason":"<почему это масло подходит, 1-2 предложения>","insight":"<тёплое поддерживающее напутствие на сегодня, 1-2 предложения>"}',
+    `Палитра цвета дня (hex по эмоции): ${palette}.`,
+    "",
+    'Ответь строго одним JSON-объектом без markdown: {"oilId":"<id>","aromaReason":"<почему это масло подходит, 1-2 предложения>","insight":"<тёплое поддерживающее напутствие на сегодня, 1-2 предложения>","color":"<hex из палитры>","tomorrowTeaser":"<одна короткая интригующая фраза о том, что ждёт завтра>"}',
   ].join("\n");
 
   // 1) DeepSeek (primary)
@@ -100,13 +142,8 @@ async function selectOilWithLLM(
         const data = await resp.json();
         const content: string = data.choices?.[0]?.message?.content || "";
         const parsed = parseLooseJson(content);
-        if (parsed && typeof parsed.oilId === "string") {
-          return {
-            oilId: parsed.oilId,
-            aromaReason: typeof parsed.aromaReason === "string" ? parsed.aromaReason : "",
-            insight: typeof parsed.insight === "string" ? parsed.insight : "",
-          };
-        }
+        const selection = toSelection(parsed);
+        if (selection) return selection;
       }
     } catch (err) {
       console.warn("DeepSeek recommendation failed, trying Gemini...", err);
@@ -124,13 +161,8 @@ async function selectOilWithLLM(
       });
       const text = resGen.text || "";
       const parsed = parseLooseJson(text);
-      if (parsed && typeof parsed.oilId === "string") {
-        return {
-          oilId: parsed.oilId,
-          aromaReason: typeof parsed.aromaReason === "string" ? parsed.aromaReason : "",
-          insight: typeof parsed.insight === "string" ? parsed.insight : "",
-        };
-      }
+      const selection = toSelection(parsed);
+      if (selection) return selection;
     } catch (err) {
       console.warn("Gemini recommendation failed, using local template...", err);
     }
@@ -740,14 +772,22 @@ async function startServer() {
         return res.status(400).json({ error: "Missing microInput" });
       }
 
+      // «Красная зона»: кризисные высказывания перехватываются до вызова LLM.
+      if (detectCrisis(microInput)) {
+        return res.json({ crisis: true });
+      }
+
       const baseline = plutchikProfile?.baseline || DEFAULT_PLUTCHIK;
       const { vector, dominant } = inferEmotionState(microInput, baseline);
 
       const hour = typeof context?.hour === "number" ? context.hour : new Date().getHours();
+      const stuckFlag = Boolean(context?.stuckFlag);
+      const eveningHarder = Boolean(context?.eveningHarder);
+      const dominantLabel = EMOTION_LABELS[dominant];
       const feedback = buildFeedbackEntries(emotionalHistory);
-      const shortlist = candidateShortlist({ vector, hour, feedback, dominant });
+      const shortlist = candidateShortlist({ vector, hour, feedback, dominant, eveningHarder });
 
-      const selection = await selectOilWithLLM(shortlist, microInput, EMOTION_LABELS[dominant]);
+      const selection = await selectOilWithLLM(shortlist, microInput, dominantLabel);
       const chosen =
         selection && shortlist.some((o) => o.id === selection.oilId)
           ? shortlist.find((o) => o.id === selection.oilId)!
@@ -759,13 +799,106 @@ async function startServer() {
           dominant,
           aroma: chosen.name,
           aromaId: chosen.id,
-          aromaReason: selection?.aromaReason || defaultAromaReason(chosen, EMOTION_LABELS[dominant]),
+          aromaReason: selection?.aromaReason || defaultAromaReason(chosen, dominant),
           insight: selection?.insight || defaultInsight(chosen),
+          breathing: breathingPatternFor(stuckFlag),
+          color: selection?.color || colorForDominant(dominant),
+          tomorrowTeaser: selection?.tomorrowTeaser || defaultTomorrowTeaser(dominantLabel),
         },
       });
     } catch (error: any) {
       console.error("Recommendation error:", error);
       res.status(500).json({ error: "Failed to generate recommendation: " + (error?.message || "Unknown error") });
+    }
+  });
+
+  // Затравки для практики Expressive Writing (LLM-генерация, не хранение).
+  // Состояние практик остаётся клиентским — сервер лишь подсказывает стартовые фразы.
+  app.post("/api/ai/practice-starters", async (req, res) => {
+    try {
+      const { microInput, dominant } = req.body || {};
+      const label = EMOTION_LABELS[dominant as EmotionKey] ?? "ваше состояние";
+      const described =
+        typeof microInput === "string" && microInput.trim()
+          ? ` и описал(а) её так: «${microInput.trim()}»`
+          : "";
+      const prompt = [
+        "Ты — заботливый ассистент приложения «Внутренний Компас».",
+        `Пользователь сейчас проживает эмоцию «${label}»${described}.`,
+        "Предложи ровно 3 короткие затравки для практики экспрессивного письма (микро-письмо): " +
+          "открытые вопросы, которые помогут выгрузить застрявшее и мягко отпустить его.",
+        'Отвечай строго JSON-объектом без markdown: {"starters":["...","...","..."]}',
+      ].join("\n");
+
+      const parseStarters = (parsed: Record<string, unknown> | null): string[] | null => {
+        const arr = parsed?.starters;
+        if (Array.isArray(arr)) {
+          const items = arr
+            .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+            .slice(0, 3);
+          if (items.length > 0) return items;
+        }
+        return null;
+      };
+
+      let starters: string[] = [];
+
+      // 1) DeepSeek (primary)
+      const deepseekKey = process.env.DEEPSEEK_API_KEY;
+      if (deepseekKey) {
+        try {
+          const resp = await fetch("https://api.deepseek.com/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${deepseekKey}`,
+            },
+            body: JSON.stringify({
+              model: process.env.DEEPSEEK_MODEL || "deepseek-chat",
+              messages: [{ role: "user", content: prompt }],
+              response_format: { type: "json_object" },
+            }),
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            const content: string = data.choices?.[0]?.message?.content || "";
+            const parsed = parseStarters(parseLooseJson(content));
+            if (parsed) starters = parsed;
+          }
+        } catch (err) {
+          console.warn("DeepSeek practice-starters failed, trying Gemini...", err);
+        }
+      }
+
+      // 2) Gemini (fallback)
+      const geminiKey = process.env.GEMINI_API_KEY;
+      if (starters.length === 0 && geminiKey) {
+        try {
+          const ai = new GoogleGenAI({ apiKey: geminiKey });
+          const resGen = await ai.models.generateContent({
+            model: "gemini-3.6-flash",
+            contents: prompt,
+          });
+          const parsed = parseStarters(parseLooseJson(resGen.text || ""));
+          if (parsed) starters = parsed;
+        } catch (err) {
+          console.warn("Gemini practice-starters failed, using local fallback...", err);
+        }
+      }
+
+      // 3) Локальный фолбэк без ключей
+      if (starters.length === 0) {
+        starters = [
+          "Что я чувствую прямо сейчас?",
+          "Что застряло и просится наружу?",
+          "Что я хочу отпустить?",
+        ];
+      }
+
+      res.json({ starters: starters.slice(0, 3) });
+    } catch (error: any) {
+      console.error("practice-starters error:", error);
+      res.status(500).json({ error: "Failed to generate starters: " + (error?.message || "Unknown error") });
     }
   });
 

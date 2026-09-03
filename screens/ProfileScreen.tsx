@@ -50,6 +50,7 @@ const ProfileScreen: React.FC = () => {
 
     const menuItems = [
         { name: 'Редактировать профиль', icon: 'edit', path: '', action: () => alert('Этот раздел находится в разработке') },
+        { name: 'Моя аптечка', icon: 'medication', path: '/cabinet', action: () => navigate('/cabinet') },
         { name: 'Словарь символов', icon: 'gesture', path: '/symbols-dictionary', action: () => navigate('/symbols-dictionary') },
         { name: 'Уведомления', icon: 'notifications', path: '/notifications', action: () => navigate('/notifications') },
         { name: 'Безопасность', icon: 'security', path: '/security', action: () => navigate('/security') },

@@ -13,19 +13,18 @@ interface EmotionMeta {
   key: EmotionKey;
   label: string;
   color: string;
-  lightColor: string;
   angle: number; // in degrees
 }
 
 const EMOTIONS: EmotionMeta[] = [
-  { key: 'joy', label: 'Радость', color: '#f59e0b', lightColor: '#fef3c7', angle: 0 },
-  { key: 'trust', label: 'Доверие', color: '#10b981', lightColor: '#d1fae5', angle: 45 },
-  { key: 'fear', label: 'Страх', color: '#059669', lightColor: '#a7f3d0', angle: 90 },
-  { key: 'surprise', label: 'Удивление', color: '#0284c7', lightColor: '#e0f2fe', angle: 135 },
-  { key: 'sadness', label: 'Печаль', color: '#3b82f6', lightColor: '#dbeafe', angle: 180 },
-  { key: 'disgust', label: 'Отвращение', color: '#8b5cf6', lightColor: '#ede9fe', angle: 225 },
-  { key: 'anger', label: 'Гнев', color: '#ef4444', lightColor: '#fee2e2', angle: 270 },
-  { key: 'anticipation', label: 'Ожидание', color: '#f97316', lightColor: '#ffedd5', angle: 315 },
+  { key: 'joy', label: 'Радость', color: '#f59e0b', angle: 0 },
+  { key: 'trust', label: 'Доверие', color: '#10b981', angle: 45 },
+  { key: 'fear', label: 'Страх', color: '#059669', angle: 90 },
+  { key: 'surprise', label: 'Удивление', color: '#0284c7', angle: 135 },
+  { key: 'sadness', label: 'Печаль', color: '#3b82f6', angle: 180 },
+  { key: 'disgust', label: 'Отвращение', color: '#8b5cf6', angle: 225 },
+  { key: 'anger', label: 'Гнев', color: '#ef4444', angle: 270 },
+  { key: 'anticipation', label: 'Ожидание', color: '#f97316', angle: 315 },
 ];
 
 export const PlutchikWheel: React.FC<PlutchikWheelProps> = ({
@@ -157,25 +156,6 @@ export const PlutchikWheel: React.FC<PlutchikWheelProps> = ({
         />
       </svg>
 
-      {/* Dominant emotion pill */}
-      <div className="mt-4 flex flex-wrap justify-center gap-2">
-        {EMOTIONS.map((e) => {
-          const val = vector[e.key] ?? 0;
-          return (
-            <div
-              key={e.key}
-              onClick={() => handleSectorClick(e.key)}
-              style={{ backgroundColor: e.lightColor, color: e.color }}
-              className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border border-black/5 transition-transform ${
-                interactive ? 'cursor-pointer hover:scale-105' : ''
-              }`}
-            >
-              <span>{e.label}</span>
-              <span className="opacity-75">{Math.round(val * 100)}%</span>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 };

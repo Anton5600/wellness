@@ -19,12 +19,13 @@ describe('computeUnlockedFeatures', () => {
   });
 
   it('пороги открываются по одному', () => {
-    expect(computeUnlockedFeatures(3).eveningCheckin).toBe(true);
-    expect(computeUnlockedFeatures(4).mapDay).toBe(false);
-    expect(computeUnlockedFeatures(5).mapDay).toBe(true);
-    expect(computeUnlockedFeatures(10).cards).toBe(true);
-    expect(computeUnlockedFeatures(14).patterns).toBe(true);
-    expect(computeUnlockedFeatures(21).catalog).toBe(true);
+    expect(computeUnlockedFeatures(3).eveningCheckin).toBe(false);
+    expect(computeUnlockedFeatures(4).eveningCheckin).toBe(true);
+    expect(computeUnlockedFeatures(7).mapDay).toBe(false);
+    expect(computeUnlockedFeatures(8).mapDay).toBe(true);
+    expect(computeUnlockedFeatures(14).cards).toBe(true);
+    expect(computeUnlockedFeatures(21).patterns).toBe(true);
+    expect(computeUnlockedFeatures(30).catalog).toBe(true);
     expect(computeUnlockedFeatures(30).exportPdf).toBe(true);
   });
 

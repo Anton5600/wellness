@@ -1,31 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNavBar from '../components/BottomNavBar';
-
-const GROUNDING_EXERCISES = [
-  {
-    icon: 'visibility',
-    title: '5-4-3-2-1 заземление',
-    text: 'Назовите 5 вещей, которые видите, 4 — которые слышите, 3 — которые ощущаете кожей, 2 — которые можете понюхать, 1 — на вкус.',
-  },
-  {
-    icon: 'air',
-    title: 'Дыхание по квадрату',
-    text: 'Вдох 4 сек → задержка 4 сек → выдох 4 сек → пауза 4 сек. Повторите 4–5 циклов, пока пульс не замедлится.',
-  },
-  {
-    icon: 'spa',
-    title: 'Арома-якорь',
-    text: 'Нанесите 1 каплю успокаивающего масла на ладони, разотрите и сделайте 3 глубоких вдоха из «лодочки».',
-  },
-];
-
-const CRISIS_RESOURCES = [
-  { name: 'Горячая линия психологической помощи МЧС России', phone: '8 (800) 775-17-17' },
-  { name: 'Московская служба психологической помощи', phone: '051 (с городского), 8 (495) 051 (с мобильного)' },
-  { name: 'Телефон доверия для детей и подростков', phone: '8 (800) 2000-122' },
-  { name: 'Экстренная служба', phone: '112' },
-];
+import { GROUNDING_EXERCISES, CRISIS_RESOURCES } from '../data/crisis';
 
 export const ResourcesScreen: React.FC = () => {
   const navigate = useNavigate();

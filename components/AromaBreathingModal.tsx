@@ -5,16 +5,28 @@ interface AromaBreathingModalProps {
   onClose: () => void;
   oilName: string;
   practiceText: string;
+  /** Паттерн дыхания "вдох-задержка-выдох", напр. "4-4-6" или "4-4-4". */
+  pattern?: string;
 }
 
 type Phase = 'prep' | 'inhale' | 'hold' | 'exhale' | 'completed';
+
+const parsePattern = (p?: string): [number, number, number] => {
+  const parts = (p ?? '4-4-6').split('-').map(Number);
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n) && n > 0)) {
+    return [parts[0], parts[1], parts[2]];
+  }
+  return [4, 4, 6];
+};
 
 export const AromaBreathingModal: React.FC<AromaBreathingModalProps> = ({
   isOpen,
   onClose,
   oilName,
   practiceText,
+  pattern = '4-4-6',
 }) => {
+  const [inhaleSec, holdSec, exhaleSec] = parsePattern(pattern);
   const [phase, setPhase] = useState<Phase>('prep');
   const [secondsLeft, setSecondsLeft] = useState(60);
   const [cycle, setCycle] = useState(1);
@@ -44,7 +56,7 @@ export const AromaBreathingModal: React.FC<AromaBreathingModalProps> = ({
     return () => clearInterval(timer);
   }, [isOpen, phase]);
 
-  // Breathing pattern loop: 4s Inhale -> 4s Hold -> 6s Exhale (14s cycle * 4 = ~56s)
+  // Breathing pattern loop: inhale -> hold -> exhale (timings from `pattern`).
   useEffect(() => {
     if (!isOpen || phase === 'prep' || phase === 'completed') return;
 
@@ -63,15 +75,15 @@ export const AromaBreathingModal: React.FC<AromaBreathingModalProps> = ({
             } else {
               setPhase('completed');
             }
-          }, 6000); // Exhale 6s
-        }, 4000); // Hold 4s
-      }, 4000); // Inhale 4s
+          }, exhaleSec * 1000);
+        }, holdSec * 1000);
+      }, inhaleSec * 1000);
     };
 
     runCycle();
 
     return () => clearTimeout(timeoutId);
-  }, [isOpen, phase === 'prep']);
+  }, [isOpen, phase === 'prep', inhaleSec, holdSec, exhaleSec]);
 
   if (!isOpen) return null;
 
@@ -88,9 +100,9 @@ export const AromaBreathingModal: React.FC<AromaBreathingModalProps> = ({
   const getPhaseSubtitle = () => {
     switch (phase) {
       case 'prep': return practiceText;
-      case 'inhale': return 'Медленно наполняйте легкие ароматом (4 сек)';
-      case 'hold': return 'Почувствуйте как масло наполняет спокойствием (4 сек)';
-      case 'exhale': return 'Отпускайте всё напряжение из тела (6 сек)';
+      case 'inhale': return `Медленно наполняйте легкие ароматом (${inhaleSec} сек)`;
+      case 'hold': return `Почувствуйте как масло наполняет спокойствием (${holdSec} сек)`;
+      case 'exhale': return `Отпускайте всё напряжение из тела (${exhaleSec} сек)`;
       case 'completed': return `Вы отлично позаботились о себе. Аромат ${oilName} останется вашим якорем безопасности.`;
     }
   };
