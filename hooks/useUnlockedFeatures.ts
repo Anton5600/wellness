@@ -32,9 +32,9 @@ export const useUnlockedFeatures = () => {
 
 /** Дни подряд, требуемые для открытия конкретной фичи (зеркалит compassService.getUnlockedFeatures). */
 export const FEATURE_DAYS = {
-  cards: 10,
-  patterns: 14,
-  catalog: 21,
+  cards: 14,
+  patterns: 21,
+  catalog: 30,
   exportPdf: 30,
 } as const;
 

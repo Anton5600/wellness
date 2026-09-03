@@ -73,4 +73,15 @@ describe('candidateShortlist', () => {
     const ids = candidateShortlist({ vector: crescent, hour: 8, feedback: [], dominant: 'fear', oilDb: oils }).map((o) => o.id);
     expect(ids[0]).toBe('fear_balance');
   });
+
+  it('eveningHarder → успокаивающие масла получают приоритет', () => {
+    const oils: OilEntry[] = [
+      { id: 'calm_x', name: 'C', description: '', icon: '', effects: [{ emotion: 'trust', mode: 'calm' }, { emotion: 'fear', mode: 'calm' }], chronotype: ['evening'], instruction: '' },
+      { id: 'awaken_x', name: 'A', description: '', icon: '', effects: [{ emotion: 'joy', mode: 'awaken' }], chronotype: ['evening'], instruction: '' },
+    ];
+    const without = candidateShortlist({ vector: star, hour: 20, feedback: [], oilDb: oils }).map((o) => o.id);
+    const withBias = candidateShortlist({ vector: star, hour: 20, feedback: [], oilDb: oils, eveningHarder: true }).map((o) => o.id);
+    expect(without[0]).toBe('awaken_x');
+    expect(withBias[0]).toBe('calm_x');
+  });
 });

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PlutchikVector, PlutchikProfile, OilEntry } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { compassService } from '../services/compassService';
@@ -9,6 +10,7 @@ import BottomNavBar from '../components/BottomNavBar';
 
 const OnboardingResultScreen: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [vector, setVector] = useState<PlutchikVector | null>(null);
   const [oil, setOil] = useState<OilEntry | null>(null);
 
@@ -81,6 +83,14 @@ const OnboardingResultScreen: React.FC = () => {
             </div>
           </section>
         )}
+
+        <button
+          onClick={() => navigate('/', { replace: true })}
+          className="w-full mt-8 flex items-center justify-center gap-2 py-4 rounded-xl bg-primary text-forest text-lg font-extrabold shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all"
+        >
+          <span className="material-symbols-outlined">spa</span>
+          Начать первый чек-ин
+        </button>
       </main>
 
       <BottomNavBar />

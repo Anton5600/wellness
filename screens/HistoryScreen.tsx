@@ -1,33 +1,33 @@
-
 import React, { useState, useEffect } from 'react';
 import BottomNavBar from '../components/BottomNavBar';
 import { useAuth } from '../context/AuthContext';
-import { EmotionHistoryEntry } from '../types';
-import { getEmotionHistory } from '../services/firestoreService';
+import { EmotionalGraphEntry } from '../types';
+import { compassService } from '../services/compassService';
 import { EMOTIONS } from '../constants';
 import { useNavigate } from 'react-router-dom';
 
 const HistoryScreen: React.FC = () => {
     const { user } = useAuth();
-    const [history, setHistory] = useState<EmotionHistoryEntry[]>([]);
+    const [history, setHistory] = useState<EmotionalGraphEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchHistory = async () => {
+        compassService.setCurrentUserId(user?.uid);
+        let cancelled = false;
+        (async () => {
             setLoading(true);
             try {
-                const userId = user?.uid || 'guest';
-                const userHistory = await getEmotionHistory(userId);
-                setHistory(userHistory);
+                const entries = await compassService.getHistory();
+                if (!cancelled) setHistory(entries);
             } catch (error) {
                 console.error("Failed to load history:", error);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
-        };
-        fetchHistory();
-    }, [user]);
+        })();
+        return () => { cancelled = true; };
+    }, [user?.uid]);
 
     const formatDate = (timestamp: number) => {
         return new Date(timestamp).toLocaleDateString('ru-RU', {
@@ -35,8 +35,8 @@ const HistoryScreen: React.FC = () => {
         });
     }
 
-    const handleItemClick = (emotionKey: string) => {
-        const result = EMOTIONS[emotionKey as keyof typeof EMOTIONS];
+    const handleItemClick = (dominant: string) => {
+        const result = EMOTIONS[dominant as keyof typeof EMOTIONS];
         if (result) {
             navigate('/result', { state: { result, fromHistory: true } });
         }
@@ -67,17 +67,17 @@ const HistoryScreen: React.FC = () => {
                     <div className="text-center py-10 text-sage">
                         <span className="material-symbols-outlined text-5xl text-primary mb-4">history</span>
                         <p className="font-semibold text-forest dark:text-white">История пока пуста</p>
-                        <p className="text-sm mt-1">Пройдите опрос, чтобы начать отслеживать свое состояние.</p>
+                        <p className="text-sm mt-1">Сделайте первый чек-ин, чтобы начать отслеживать свое состояние.</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
                         {history.map(entry => {
-                            const emotion = EMOTIONS[entry.emotionKey];
+                            const emotion = EMOTIONS[entry.dominant];
                             const textColorClass = emotion.color.replace('bg-', 'text-');
                             return (
-                                <div 
-                                    key={entry.id} 
-                                    onClick={() => handleItemClick(entry.emotionKey)}
+                                <div
+                                    key={entry.date}
+                                    onClick={() => handleItemClick(entry.dominant)}
                                     className="flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-[#1f1f1f] cursor-pointer hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
                                 >
                                     <div className={`flex-shrink-0 size-12 rounded-lg flex items-center justify-center ${emotion.color} bg-opacity-20`}>
@@ -86,6 +86,9 @@ const HistoryScreen: React.FC = () => {
                                     <div className="flex-1">
                                         <h3 className="font-bold text-forest dark:text-white">{emotion.title}</h3>
                                         <p className="text-sage dark:text-gray-400 text-xs">{formatDate(entry.timestamp)}</p>
+                                        {entry.aroma && (
+                                            <p className="text-sage dark:text-gray-400 text-xs mt-0.5">Масло: {entry.aroma}</p>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <div className={`size-3 rounded-full ${emotion.color}`}></div>
@@ -97,7 +100,7 @@ const HistoryScreen: React.FC = () => {
                     </div>
                 )}
             </main>
-            
+
             <BottomNavBar />
         </div>
     );

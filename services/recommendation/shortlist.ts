@@ -29,6 +29,8 @@ export interface CandidateShortlistInput {
   cfg?: RecommendationConfig;
   /** Точка отсчёта для окна бана; в проде — текущий момент. */
   now?: Date;
+  /** Применённый паттерн «вечером тяжелее» → успокаивающие масла получают приоритет. */
+  eveningHarder?: boolean;
 }
 
 /**
@@ -46,6 +48,7 @@ export const candidateShortlist = ({
   oilDb = OIL_DATABASE,
   cfg = DEFAULT_CONFIG,
   now,
+  eveningHarder = false,
 }: CandidateShortlistInput): OilEntry[] => {
   const banned = bannedOilIds(feedback, now ?? new Date(), cfg);
   const strategy = strategyFor(classifyShape(vector, cfg));
@@ -56,7 +59,11 @@ export const candidateShortlist = ({
     .filter((oil) => oil.chronotype.includes(chrono))
     .map((oil) => ({
       oil,
-      matches: oil.effects.filter((eff) => modeMatchesStrategy(eff.mode, strategy)).length,
+      // «Вечером тяжелее»: успокаивающие (calm) эффекты учитываем как подходящие,
+      // даже если стратегия формы колеса их не требует — предупреждаем вечерний спад.
+      matches: oil.effects.filter(
+        (eff) => modeMatchesStrategy(eff.mode, strategy) || (eveningHarder && eff.mode === 'calm')
+      ).length,
       emotion: emotionMatch(oil, dominant),
     }))
     .filter((c) => c.matches > 0)

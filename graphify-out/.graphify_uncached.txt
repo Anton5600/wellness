@@ -1,0 +1,30 @@
+D:\wellness\APP_STORE_GUIDE.md
+D:\wellness\CAPGO_GUIDE.md
+D:\wellness\CLAUDE.md
+D:\wellness\README.md
+D:\wellness\RUSTORE_GUIDE.md
+D:\wellness\amvera.yml
+D:\wellness\index.html
+D:\wellness\privacy.pdf
+D:\wellness\Политика конфиденциальности.pdf
+D:\wellness\Пользовательское соглашение об использовании МП и сайта Смарт Ритейл.pdf
+D:\wellness\Пользовательское соглашение об использовании ПО Внутренний компас.pdf
+D:\wellness\icon.jpg
+D:\wellness\icon.png
+D:\wellness\icon.svg
+D:\wellness\public\icon.svg
+D:\wellness\public\icons\icon-128.webp
+D:\wellness\public\icons\icon-192.webp
+D:\wellness\public\icons\icon-256.webp
+D:\wellness\public\icons\icon-48.webp
+D:\wellness\public\icons\icon-512.webp
+D:\wellness\public\icons\icon-72.webp
+D:\wellness\public\icons\icon-96.webp
+D:\wellness\public\symbols\symbol_anger.png
+D:\wellness\public\symbols\symbol_anticipation.png
+D:\wellness\public\symbols\symbol_disgust.png
+D:\wellness\public\symbols\symbol_fear.png
+D:\wellness\public\symbols\symbol_joy.png
+D:\wellness\public\symbols\symbol_sadness.png
+D:\wellness\public\symbols\symbol_surprise.png
+D:\wellness\public\symbols\symbol_trust.png

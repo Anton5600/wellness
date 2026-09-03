@@ -1,7 +1,7 @@
 
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { EmotionHistoryEntry, EmotionKey, UserOil, OilCatalogItem, EmotionalGraphEntry, PlutchikProfile, StreakInfo, EveningFeedback } from '../types';
+import { EmotionHistoryEntry, EmotionKey, UserOil, OilCatalogItem, EmotionalGraphEntry, PlutchikProfile, StreakInfo, EveningFeedback, PulseEntry } from '../types';
 import { OILS_CATALOG } from '../data/oils';
 
 const withTimeout = <T>(promise: Promise<T>, timeoutMs = 1500): Promise<T> => {
@@ -288,7 +288,7 @@ export const getEmotionalGraphEntry = async (userId: string, date: string): Prom
   return null;
 };
 
-export const getEmotionalGraphEntries = async (userId: string, count = 7): Promise<EmotionalGraphEntry[]> => {
+export const getEmotionalGraphEntries = async (userId: string, count?: number): Promise<EmotionalGraphEntry[]> => {
   const localEntries = Object.values(readLocal<Record<string, EmotionalGraphEntry>>(graphKey(userId), {}));
   const remoteEntries: EmotionalGraphEntry[] = [];
 
@@ -314,7 +314,23 @@ export const getEmotionalGraphEntries = async (userId: string, count = 7): Promi
   merged.forEach((e) => { asObj[e.date] = e; });
   writeLocal(graphKey(userId), asObj);
 
-  return merged.slice(0, count);
+  return count === undefined ? merged : merged.slice(0, count);
+};
+
+export const saveEmotionalGraphPulse = async (userId: string, date: string, pulse: PulseEntry): Promise<EmotionalGraphEntry | null> => {
+  const graph = readLocal<Record<string, EmotionalGraphEntry>>(graphKey(userId), {});
+  const entry = graph[date];
+  if (!entry) return null;
+
+  entry.pulses = [...(entry.pulses ?? []), pulse];
+  graph[date] = entry;
+  writeLocal(graphKey(userId), graph);
+
+  if (userId && userId !== 'guest') {
+    updateDoc(doc(db, 'emotionalGraph', `${userId}_${date}`), { pulses: entry.pulses })
+      .catch((e) => console.warn('Firestore pulse save failed:', e));
+  }
+  return entry;
 };
 
 export const saveEveningFeedbackFirestore = async (userId: string, date: string, feedback: EveningFeedback): Promise<EmotionalGraphEntry | null> => {

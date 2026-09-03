@@ -19,7 +19,9 @@ import SecurityScreen from './screens/SecurityScreen';
 import LockScreen from './screens/LockScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import CheckInScreen from './screens/CheckInScreen';
+import EntryBridgeScreen from './screens/EntryBridgeScreen';
 import ResourcesScreen from './screens/ResourcesScreen';
+import PracticeScreen from './screens/PracticeScreen';
 import VerifyEmailScreen from './screens/VerifyEmailScreen';
 import CabinetScreen from './screens/CabinetScreen';
 import AdminScreen from './screens/AdminScreen';
@@ -229,7 +231,9 @@ const AppRoutes: React.FC = () => {
               <Route path="/security" element={<SecurityScreen />} />
               <Route path="/notifications" element={<NotificationsScreen />} />
               <Route path="/check-in" element={<CheckInScreen />} />
+              <Route path="/entry" element={<EntryBridgeScreen />} />
               <Route path="/resources" element={<ResourcesScreen />} />
+              <Route path="/practice/:id" element={<PracticeScreen />} />
               <Route path="/admin" element={<AdminScreen />} />
               <Route path="/admin-oils" element={<AdminOilsScreen />} />
               <Route path="/admin-orders" element={<AdminOrdersScreen />} />

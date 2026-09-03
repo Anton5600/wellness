@@ -184,10 +184,54 @@ export const cancelStuckReminder = async () => {
     }
 };
 
-export const initNotificationListeners = (onNavigateToAromaWidget: () => void) => {
+/** ID разового напоминания «попробуй практику» из карточки паттерна. */
+const PATTERN_REMINDER_ID = 6;
+
+/** Разовое напоминание о практике (из наблюдения) в ближайший `hour:minute`. */
+export const schedulePatternReminder = async (hour: number, minute: number, practiceId: string) => {
+    try {
+        await LocalNotifications.cancel({ notifications: [{ id: PATTERN_REMINDER_ID }] });
+
+        const now = new Date();
+        const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);
+        if (at.getTime() <= now.getTime()) at.setDate(at.getDate() + 1); // уже прошло — завтра
+
+        await LocalNotifications.schedule({
+            notifications: [
+                {
+                    title: '🫁 Пора на практику',
+                    body: 'Твоё тело просило этого — открой практику на пару минут.',
+                    id: PATTERN_REMINDER_ID,
+                    schedule: { at, allowWhileIdle: true },
+                    extra: { target: 'practice', practiceId },
+                }
+            ]
+        });
+    } catch (error) {
+        console.error('Error scheduling pattern reminder', error);
+    }
+};
+
+export const cancelPatternReminder = async () => {
+    try {
+        await LocalNotifications.cancel({ notifications: [{ id: PATTERN_REMINDER_ID }] });
+    } catch (error) {
+        console.error('Error canceling pattern reminder', error);
+    }
+};
+
+export const initNotificationListeners = (
+    onNavigateToAromaWidget: () => void,
+    onOpenPractice?: (practiceId: string) => void
+) => {
     try {
         LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-            if (action.notification?.extra?.target === 'aroma' || action.notification?.id === 2 || action.notification?.id === 4) {
+            const extra = action.notification?.extra as { target?: string; practiceId?: string } | undefined;
+            if (extra?.target === 'practice' && extra.practiceId && onOpenPractice) {
+                onOpenPractice(extra.practiceId);
+                return;
+            }
+            if (extra?.target === 'aroma' || action.notification?.id === 2 || action.notification?.id === 4) {
                 onNavigateToAromaWidget();
             }
         });

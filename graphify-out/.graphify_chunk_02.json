@@ -1,0 +1,156 @@
+{
+  "nodes": [
+    {
+      "id": "public_symbols_symbol_anger",
+      "label": "Anger emotion symbol (Гнев) — 512x512 RGBA icon for Plutchik wheel",
+      "file_type": "image",
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_anger.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_symbols_symbol_anticipation",
+      "label": "Anticipation emotion symbol (Ожидание) — 512x512 RGBA icon for Plutchik wheel",
+      "file_type": "image",
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_anticipation.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_symbols_symbol_disgust",
+      "label": "Disgust emotion symbol (Отвращение) — 512x512 RGBA icon for Plutchik wheel",
+      "file_type": "image",
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_disgust.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_symbols_symbol_fear",
+      "label": "Fear emotion symbol (Страх) — 512x512 RGBA icon for Plutchik wheel",
+      "file_type": "image",
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_fear.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_symbols_symbol_joy",
+      "label": "Joy emotion symbol (Радость) — 512x512 RGBA icon for Plutchik wheel",
+      "file_type": "image",
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_joy.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_symbols_symbol_sadness",
+      "label": "Sadness emotion symbol (Печаль) — 512x512 RGBA icon for Plutchik wheel",
+      "file_type": "image",
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_sadness.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_symbols_symbol_surprise",
+      "label": "Surprise emotion symbol (Удивление) — 512x512 RGBA icon for Plutchik wheel",
+      "file_type": "image",
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_surprise.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_symbols_symbol_trust",
+      "label": "Trust emotion symbol (Доверие) — 512x512 RGBA icon for Plutchik wheel",
+      "file_type": "image",
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_trust.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "public_symbols_symbol_joy",
+      "target": "public_symbols_symbol_sadness",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_joy.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_symbols_symbol_trust",
+      "target": "public_symbols_symbol_disgust",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_trust.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_symbols_symbol_fear",
+      "target": "public_symbols_symbol_anger",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_fear.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "public_symbols_symbol_surprise",
+      "target": "public_symbols_symbol_anticipation",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_surprise.png",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "plutchik_primary_emotion_symbol_set",
+      "label": "Plutchik primary emotion symbol set (8 icons consumed via /symbols/symbol_{key}.png)",
+      "nodes": [
+        "public_symbols_symbol_anger",
+        "public_symbols_symbol_anticipation",
+        "public_symbols_symbol_disgust",
+        "public_symbols_symbol_fear",
+        "public_symbols_symbol_joy",
+        "public_symbols_symbol_sadness",
+        "public_symbols_symbol_surprise",
+        "public_symbols_symbol_trust"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\wellness\\public\\symbols\\symbol_anger.png"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

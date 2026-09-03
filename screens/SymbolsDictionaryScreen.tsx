@@ -28,7 +28,7 @@ const SymbolsDictionaryScreen: React.FC = () => {
                     Этот язык символов отражает природу каждой эмоции. Используйте их для коммуникации, самопознания и визуализации своих состояний.
                 </p>
 
-                <FeatureLock unlocked={features?.patterns ?? false} title="Словарь символов" dayRequired={FEATURE_DAYS.patterns} currentDay={streak?.current ?? 0}>
+                <FeatureLock unlocked={features?.patterns ?? false} title="Словарь символов" dayRequired={FEATURE_DAYS.patterns} currentDay={streak?.longest ?? 0}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {Object.values(EMOTIONS).map((emotion) => (
                         <div

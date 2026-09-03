@@ -1,0 +1,1106 @@
+{
+  "nodes": [
+    {
+      "id": "app_store_guide_appstorepublication",
+      "label": "Apple App Store publishing",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "app_store_guide_xcode",
+      "label": "Xcode",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "app_store_guide_appledeveloperaccount",
+      "label": "Apple Developer Account",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "app_store_guide_appstoreconnect",
+      "label": "App Store Connect",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "app_store_guide_bundleidentifier",
+      "label": "Bundle Identifier com.wellness.app",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "app_store_guide_capacitor",
+      "label": "Capacitor",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "app_store_guide_privacypolicyrequirement",
+      "label": "Apple requires a privacy policy URL",
+      "file_type": "rationale",
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "app_store_guide_reviewguideline42",
+      "label": "App Store Review Guideline 4.2 (empty apps may be rejected)",
+      "file_type": "rationale",
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "capgo_guide_capgo",
+      "label": "Capgo (Capacitor Updater)",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "capgo_guide_appid",
+      "label": "Capgo App ID com.wellness.app",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "capgo_guide_cloud",
+      "label": "Capgo cloud service",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "capgo_guide_selfhosting",
+      "label": "Capgo self-hosting",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "capgo_guide_rustoreappupdate",
+      "label": "RuStore AppUpdate native plugin",
+      "file_type": "rationale",
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "capgo_guide_automaticrollback",
+      "label": "Capgo automatic rollback",
+      "file_type": "rationale",
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "capgo_guide_autoupdatefalse",
+      "label": "Capgo autoUpdate:false (manual control)",
+      "file_type": "rationale",
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_graphify",
+      "label": "graphify knowledge graph tooling",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_graphreport",
+      "label": "GRAPH_REPORT.md",
+      "file_type": "document",
+      "source_file": "D:\\wellness\\CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_aistudioapp",
+      "label": "AI Studio app",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_geminiapikey",
+      "label": "GEMINI_API_KEY",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rustore_guide_rustorepublication",
+      "label": "RuStore publishing",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rustore_guide_capacitor",
+      "label": "Capacitor",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rustore_guide_androidstudio",
+      "label": "Android Studio",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rustore_guide_apkaab",
+      "label": "APK / Android App Bundle (AAB)",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rustore_guide_wellnessapp",
+      "label": "Wellness App",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rustore_guide_packagename",
+      "label": "Package Name com.wellness.app",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rustore_guide_keystore",
+      "label": "Signing Key Store",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rustore_guide_buildgradle",
+      "label": "android/app/build.gradle (versionCode/versionName)",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "amvera_deployment",
+      "label": "Amvera deployment configuration",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\amvera.yml",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "amvera_servercjs",
+      "label": "dist/server.cjs (server entry)",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\amvera.yml",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "index_doterra",
+      "label": "dōTERRA | Эмоциональное здоровье (app branding)",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "index_tailwindtheme",
+      "label": "Tailwind CSS dark-mode theme & palette",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "privacy_gosport",
+      "label": "GoSport mobile app",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\privacy.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "privacy_gousportllc",
+      "label": "ООО «ГоуСпорт» (rightsholder)",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\privacy.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "privacy_privacypolicy",
+      "label": "GoSport Privacy Policy",
+      "file_type": "document",
+      "source_file": "D:\\wellness\\privacy.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "privacy_personaldataprocessing",
+      "label": "Personal data processing (RF law)",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\privacy.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "politika_konfidencialnosti_vnutrenniykompas",
+      "label": "Внутренний компас (Inner Compass) mobile app",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\Политика конфиденциальности.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "politika_konfidencialnosti_privacypolicy",
+      "label": "Политика конфиденциальности (Внутренний компас)",
+      "file_type": "document",
+      "source_file": "D:\\wellness\\Политика конфиденциальности.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "politika_konfidencialnosti_personaldata",
+      "label": "Collected personal data (name, email, delivery address)",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\Политика конфиденциальности.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_yantarnayakarta",
+      "label": "«Янтарная карта» mobile app & site",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании МП и сайта Смарт Ритейл.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_smartretail",
+      "label": "ООО «Смарт Ритейл» (rightsholder)",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании МП и сайта Смарт Ритейл.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_yantarnayakartasite",
+      "label": "https://янтарнаякарта.рф",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании МП и сайта Смарт Ритейл.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_useragreement",
+      "label": "Пользовательское соглашение (Янтарная карта / Смарт Ритейл)",
+      "file_type": "document",
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании МП и сайта Смарт Ритейл.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_vnutrenniykompas",
+      "label": "Внутренний компас mobile app",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании ПО Внутренний компас.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_karpovanton",
+      "label": "Карпов Антон Юрьевич (rightsholder)",
+      "file_type": "concept",
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании ПО Внутренний компас.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_useragreement",
+      "label": "Пользовательское соглашение (Внутренний компас)",
+      "file_type": "document",
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании ПО Внутренний компас.pdf",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "app_store_guide_appstorepublication",
+      "target": "app_store_guide_xcode",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "app_store_guide_appstorepublication",
+      "target": "app_store_guide_appledeveloperaccount",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "app_store_guide_appstorepublication",
+      "target": "app_store_guide_appstoreconnect",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "app_store_guide_appstorepublication",
+      "target": "app_store_guide_bundleidentifier",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "app_store_guide_privacypolicyrequirement",
+      "target": "app_store_guide_appstorepublication",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "app_store_guide_reviewguideline42",
+      "target": "app_store_guide_appstorepublication",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "app_store_guide_capacitor",
+      "target": "app_store_guide_appstorepublication",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_capgo",
+      "target": "capgo_guide_cloud",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_capgo",
+      "target": "capgo_guide_selfhosting",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_rustoreappupdate",
+      "target": "capgo_guide_capgo",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_automaticrollback",
+      "target": "capgo_guide_capgo",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_autoupdatefalse",
+      "target": "capgo_guide_capgo",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_capgo",
+      "target": "services_capgoupdate_performmanualupdate",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_capgo",
+      "target": "services_capgoupdate_initializecapgoupdate",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_appid",
+      "target": "capgo_guide_cloud",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_graphify",
+      "target": "claude_graphreport",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_aistudioapp",
+      "target": "readme_geminiapikey",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rustore_guide_rustorepublication",
+      "target": "rustore_guide_capacitor",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rustore_guide_rustorepublication",
+      "target": "rustore_guide_androidstudio",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rustore_guide_rustorepublication",
+      "target": "rustore_guide_apkaab",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rustore_guide_rustorepublication",
+      "target": "rustore_guide_keystore",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rustore_guide_wellnessapp",
+      "target": "rustore_guide_packagename",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rustore_guide_rustorepublication",
+      "target": "rustore_guide_buildgradle",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "amvera_deployment",
+      "target": "amvera_servercjs",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\amvera.yml",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "index_doterra",
+      "target": "index_tailwindtheme",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "privacy_privacypolicy",
+      "target": "privacy_gosport",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\privacy.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "privacy_privacypolicy",
+      "target": "privacy_gousportllc",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\privacy.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "privacy_privacypolicy",
+      "target": "privacy_personaldataprocessing",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\privacy.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "politika_konfidencialnosti_privacypolicy",
+      "target": "politika_konfidencialnosti_vnutrenniykompas",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\Политика конфиденциальности.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "politika_konfidencialnosti_privacypolicy",
+      "target": "politika_konfidencialnosti_personaldata",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\Политика конфиденциальности.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_useragreement",
+      "target": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_yantarnayakarta",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании МП и сайта Смарт Ритейл.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_useragreement",
+      "target": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_smartretail",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании МП и сайта Смарт Ритейл.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_yantarnayakarta",
+      "target": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_yantarnayakartasite",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании МП и сайта Смарт Ритейл.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_useragreement",
+      "target": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_vnutrenniykompas",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании ПО Внутренний компас.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_useragreement",
+      "target": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_karpovanton",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании ПО Внутренний компас.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_useragreement",
+      "target": "politika_konfidencialnosti_privacypolicy",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании ПО Внутренний компас.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "politika_konfidencialnosti_privacypolicy",
+      "target": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_useragreement",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\wellness\\Политика конфиденциальности.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "app_store_guide_capacitor",
+      "target": "rustore_guide_capacitor",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "app_store_guide_appstorepublication",
+      "target": "rustore_guide_rustorepublication",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_rustoreappupdate",
+      "target": "rustore_guide_rustorepublication",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "privacy_privacypolicy",
+      "target": "politika_konfidencialnosti_privacypolicy",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\wellness\\privacy.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_useragreement",
+      "target": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_useragreement",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании МП и сайта Смарт Ритейл.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "politika_konfidencialnosti_vnutrenniykompas",
+      "target": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_vnutrenniykompas",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\wellness\\Политика конфиденциальности.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "politika_konfidencialnosti_vnutrenniykompas",
+      "target": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_karpovanton",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\wellness\\Политика конфиденциальности.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "index_doterra",
+      "target": "politika_konfidencialnosti_vnutrenniykompas",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\wellness\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_aistudioapp",
+      "target": "index_doterra",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\wellness\\README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "amvera_servercjs",
+      "target": "readme_aistudioapp",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\wellness\\amvera.yml",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_capgo",
+      "target": "rustore_guide_capacitor",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "app_store_guide_bundleidentifier",
+      "target": "rustore_guide_packagename",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_appid",
+      "target": "rustore_guide_packagename",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "app_store_guide_bundleidentifier",
+      "target": "capgo_guide_appid",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\wellness\\APP_STORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rustore_guide_wellnessapp",
+      "target": "politika_konfidencialnosti_vnutrenniykompas",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rustore_guide_wellnessapp",
+      "target": "index_doterra",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "capgo_guide_capgo",
+      "target": "rustore_guide_rustorepublication",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\wellness\\CAPGO_GUIDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "privacy_gosport",
+      "target": "politika_konfidencialnosti_vnutrenniykompas",
+      "relation": "conceptually_related_to",
+      "confidence": "AMBIGUOUS",
+      "confidence_score": 0.3,
+      "source_file": "D:\\wellness\\privacy.pdf",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "polzovatelskoe_soglashenie_ob_ispolzovanii_mp_i_sajta_smart_ritejl_yantarnayakarta",
+      "target": "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_vnutrenniykompas",
+      "relation": "conceptually_related_to",
+      "confidence": "AMBIGUOUS",
+      "confidence_score": 0.3,
+      "source_file": "D:\\wellness\\Пользовательское соглашение об использовании МП и сайта Смарт Ритейл.pdf",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "com_wellness_app_identifier",
+      "label": "com.wellness.app bundle/package identifier",
+      "nodes": [
+        "app_store_guide_bundleidentifier",
+        "capgo_guide_appid",
+        "rustore_guide_packagename"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md"
+    },
+    {
+      "id": "capacitor_web_to_native_workflow",
+      "label": "Capacitor web-to-native packaging & update workflow",
+      "nodes": [
+        "rustore_guide_capacitor",
+        "app_store_guide_capacitor",
+        "capgo_guide_capgo"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\wellness\\RUSTORE_GUIDE.md"
+    },
+    {
+      "id": "vnutrenniy_kompas_legal_documents",
+      "label": "Legal documents for the Внутренний компас app",
+      "nodes": [
+        "politika_konfidencialnosti_privacypolicy",
+        "politika_konfidencialnosti_vnutrenniykompas",
+        "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_useragreement",
+        "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_vnutrenniykompas",
+        "polzovatelskoe_soglashenie_ob_ispolzovanii_po_vnutrennij_kompas_karpovanton"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\wellness\\Политика конфиденциальности.pdf"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

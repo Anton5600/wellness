@@ -2,11 +2,11 @@ import { UnlockedFeatures } from '../../types';
 
 /** Пороги открытия фич по количеству дней подряд (streak). */
 export const UNLOCK_DAYS = {
-  eveningCheckin: 3,
-  mapDay: 5,
-  cards: 10,
-  patterns: 14,
-  catalog: 21,
+  eveningCheckin: 4,
+  mapDay: 8,
+  cards: 14,
+  patterns: 21,
+  catalog: 30,
   exportPdf: 30,
 } as const;
 
