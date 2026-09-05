@@ -18,6 +18,8 @@ import { CRISIS_RESOURCES, GROUNDING_EXERCISES } from '../data/crisis';
 import { EveningFeedback, EmotionalGraphEntry, PlutchikProfile } from '../types';
 import { TimeOfDayPattern } from '../services/recommendation/pattern';
 import { requestPermissions, schedulePatternReminder } from '../services/notificationService';
+import { resolveApiBaseUrl } from '../services/apiBase';
+import { encodeSttPcm, STT_SAMPLE_RATE } from '../services/pcmEncoder';
 
 const FEEDBACK_OPTIONS: Array<{ value: EveningFeedback; label: string; icon: string }> = [
   { value: 'better', label: 'Стало лучше', icon: 'thumb_up' },
@@ -81,8 +83,8 @@ export const DailyRitual: React.FC = () => {
   );
   const [ownedOilIds, setOwnedOilIds] = useState<Set<string>>(new Set());
   const [substitution, setSubstitution] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const stopRecordingRef = useRef<(() => void) | null>(null);
+  const pcmChunksRef = useRef<Float32Array[]>([]);
 
   useEffect(() => {
     compassService.setCurrentUserId(user?.uid);
@@ -255,53 +257,93 @@ export const DailyRitual: React.FC = () => {
       reader.readAsDataURL(blob);
     });
 
+  const sendPcmToStt = async (sampleRate: number) => {
+    const chunks = pcmChunksRef.current;
+    pcmChunksRef.current = [];
+    setIsRecording(false);
+
+    const total = chunks.reduce((n, c) => n + c.length, 0);
+    if (total === 0) return;
+
+    const samples = new Float32Array(total);
+    let offset = 0;
+    for (const c of chunks) {
+      samples.set(c, offset);
+      offset += c.length;
+    }
+
+    const pcm = encodeSttPcm(samples, sampleRate);
+    setSttBusy(true);
+    try {
+      const audioBase64 = await blobToBase64(new Blob([pcm], { type: 'application/octet-stream' }));
+      const res = await fetch(`${resolveApiBaseUrl()}/api/stt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audioBase64, format: 'lpcm', sampleRateHertz: STT_SAMPLE_RATE }),
+      });
+      const data = await res.json();
+      if (res.ok && data.text) {
+        setInput((prev) => (prev ? `${prev} ${data.text}`.trim() : data.text));
+      } else {
+        setSttError(data.error || (data.text ? 'Не удалось распознать речь.' : 'Голосовой ввод пока недоступен.'));
+      }
+    } catch {
+      setSttError('Ошибка сети при распознавании.');
+    } finally {
+      setSttBusy(false);
+    }
+  };
+
   const toggleRecording = async () => {
     if (isRecording) {
-      mediaRecorderRef.current?.stop();
+      stopRecordingRef.current?.();
       return;
     }
 
     setSttError(null);
-    if (!navigator.mediaDevices || !window.MediaRecorder) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setSttError('Голосовой ввод недоступен в этом браузере.');
+      return;
+    }
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) {
       setSttError('Голосовой ввод недоступен в этом браузере.');
       return;
     }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      const audioCtx = new AudioContextCtor();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+      const sampleRate = audioCtx.sampleRate;
+      pcmChunksRef.current = [];
+
+      processor.onaudioprocess = (e) => {
+        pcmChunksRef.current.push(new Float32Array(e.inputBuffer.getChannelData(0)));
       };
-      recorder.onstop = async () => {
+
+      // Глушим выход, чтобы микрофон не играл в динамик (без обратной связи).
+      const mute = audioCtx.createGain();
+      mute.gain.value = 0;
+      source.connect(processor);
+      processor.connect(mute);
+      mute.connect(audioCtx.destination);
+
+      let stopped = false;
+      const stop = () => {
+        if (stopped) return;
+        stopped = true;
+        processor.disconnect();
+        source.disconnect();
+        mute.disconnect();
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/ogg' });
-        chunksRef.current = [];
-        setIsRecording(false);
-        if (blob.size === 0) return;
-        setSttBusy(true);
-        try {
-          const audioBase64 = await blobToBase64(blob);
-          const res = await fetch('/api/stt', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ audioBase64, mimeType: blob.type || 'audio/ogg' }),
-          });
-          const data = await res.json();
-          if (res.ok && data.text) {
-            setInput((prev) => (prev ? `${prev} ${data.text}`.trim() : data.text));
-          } else {
-            setSttError(!data.text ? 'Голосовой ввод пока недоступен.' : (data.error || 'Не удалось распознать речь.'));
-          }
-        } catch {
-          setSttError('Ошибка сети при распознавании.');
-        } finally {
-          setSttBusy(false);
-        }
+        void audioCtx.close();
+        void sendPcmToStt(sampleRate);
       };
-      mediaRecorderRef.current = recorder;
-      recorder.start();
+      stopRecordingRef.current = stop;
       setIsRecording(true);
     } catch {
       setSttError('Нет доступа к микрофону. Разрешите доступ и попробуйте ещё раз.');
