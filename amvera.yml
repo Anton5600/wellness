@@ -5,9 +5,7 @@ meta:
     version: 22
 
 build:
-  additionalCommands:
-    - npm install --include=dev
-    - npm run build
+  additionalCommands: npm install --include=dev && npm run build
 
 run:
   scriptName: dist/server.cjs
