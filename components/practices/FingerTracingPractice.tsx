@@ -46,6 +46,14 @@ export const FingerTracingPractice: React.FC<PracticeTrackProps> = ({
   const path = useMemo(buildPath, []);
   const phase = breathPhase(elapsed);
 
+  // Единый сигнал «сошёл с линии»: вибрация + красная вспышка на 300 мс.
+  const signalDeviation = () => {
+    hapticVibrate(40);
+    setFlash(true);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(false), 300);
+  };
+
   const handleMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -53,20 +61,33 @@ export const FingerTracingPractice: React.FC<PracticeTrackProps> = ({
     const sx = ((e.clientX - rect.left) / rect.width) * VIEW_W;
     const sy = ((e.clientY - rect.top) / rect.height) * VIEW_H;
     if (Math.hypot(sx - x, sy - y) > DEVIATION_PX) {
-      hapticVibrate(40);
-      setFlash(true);
-      if (flashTimer.current) clearTimeout(flashTimer.current);
-      flashTimer.current = setTimeout(() => setFlash(false), 300);
+      signalDeviation();
     }
   };
 
+  // Берём захват указателя и гасим дефолтное поведение, чтобы ведение пальцем
+  // не превращалось в выделение текста и pointermove не терялся на краях.
+  const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  // Подъём/срыв пальца — тоже «сошёл с линии»: тот же сигнал, что при отклонении.
+  const handlePointerUp = () => signalDeviation();
+
   return (
-    <div className="w-full flex flex-col items-center px-2">
+    <div
+      className="w-full flex flex-col items-center px-2 select-none"
+      style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
+    >
       <svg
         ref={svgRef}
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
         className="w-full max-w-sm touch-none"
+        onPointerDown={handlePointerDown}
         onPointerMove={handleMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         role="img"
         aria-label="Трассировка волны"
       >

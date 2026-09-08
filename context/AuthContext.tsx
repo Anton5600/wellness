@@ -1,17 +1,18 @@
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { 
-  onAuthStateChanged, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
+import {
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
   sendEmailVerification,
   sendPasswordResetEmail,
-  signOut as firebaseSignOut, 
+  signInWithCustomToken,
+  signOut as firebaseSignOut,
   deleteUser,
-  User as FirebaseUser 
+  User as FirebaseUser
 } from 'firebase/auth';
 import { auth } from '../firebaseConfig'; 
 import { User } from '../types';
@@ -85,6 +86,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       localStorage.setItem(isYandex ? 'yandex_auth_user' : 'vk_auth_user', JSON.stringify(oauthUser));
       setUser(appUser);
+
+      // Мост в Firebase Auth: сервер выпустил custom token → входим в Firebase-сессию, чтобы
+      // правила Firestore (`isOwner`) открыли доступ к данным этого пользователя. Без токена
+      // (сервер не настроен) поведение как раньше — данные только в localStorage.
+      if (oauthUser.customToken) {
+        signInWithCustomToken(auth, oauthUser.customToken).catch((e) => {
+          console.warn('[auth] signInWithCustomToken failed (local-only fallback):', e);
+        });
+      }
     };
 
     // Listen for postMessage from auth popups

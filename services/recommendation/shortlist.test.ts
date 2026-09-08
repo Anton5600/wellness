@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { PlutchikVector, OilEntry } from '../../types';
+import { PlutchikVector, OilEntry, MixedEmotion } from '../../types';
 import { OIL_DATABASE } from '../../data/oilDatabase';
+import { DYADS } from './dyads';
 import { candidateShortlist } from './shortlist';
 
 const vec = (overrides: Partial<PlutchikVector>): PlutchikVector => ({
@@ -83,5 +84,68 @@ describe('candidateShortlist', () => {
     const withBias = candidateShortlist({ vector: star, hour: 20, feedback: [], oilDb: oils, eveningHarder: true }).map((o) => o.id);
     expect(without[0]).toBe('awaken_x');
     expect(withBias[0]).toBe('calm_x');
+  });
+
+  it('диада → шорт-лист только из масел с прямой привязкой dyads', () => {
+    const dyad: MixedEmotion = { key: 'love', label: 'Любовь', emotions: ['joy', 'trust'] };
+    const oils: OilEntry[] = [
+      { id: 'tagged', name: 'T', description: '', icon: '', effects: [{ emotion: 'joy', mode: 'awaken' }], dyads: ['love'], chronotype: ['morning'], instruction: '' },
+      { id: 'untagged', name: 'U', description: '', icon: '', effects: [{ emotion: 'joy', mode: 'awaken' }, { emotion: 'trust', mode: 'calm' }], chronotype: ['morning'], instruction: '' },
+    ];
+    const ids = candidateShortlist({ vector: star, hour: 8, feedback: [], dominant: 'joy', dyad, oilDb: oils }).map((o) => o.id);
+    expect(ids).toEqual(['tagged']);
+  });
+
+  it('диада: масло вне текущего хронотипа всё равно попадает (не роняем подбор)', () => {
+    const dyad: MixedEmotion = { key: 'alarm', label: 'Испуг', emotions: ['fear', 'surprise'] };
+    const oils: OilEntry[] = [
+      { id: 'evening_only', name: 'E', description: '', icon: '', effects: [{ emotion: 'fear', mode: 'calm' }], dyads: ['alarm'], chronotype: ['evening'], instruction: '' },
+    ];
+    const ids = candidateShortlist({ vector: star, hour: 8, feedback: [], dyad, oilDb: oils }).map((o) => o.id);
+    expect(ids).toEqual(['evening_only']);
+  });
+
+  it('диада: забаненное масло исключается', () => {
+    const dyad: MixedEmotion = { key: 'love', label: 'Любовь', emotions: ['joy', 'trust'] };
+    const oils: OilEntry[] = [
+      { id: 'rose', name: 'R', description: '', icon: '', effects: [{ emotion: 'joy', mode: 'support' }], dyads: ['love'], chronotype: ['day'], instruction: '' },
+      { id: 'neroli', name: 'N', description: '', icon: '', effects: [{ emotion: 'trust', mode: 'support' }], dyads: ['love'], chronotype: ['day'], instruction: '' },
+    ];
+    const ids = candidateShortlist({
+      vector: star,
+      hour: 12,
+      feedback: [{ oilId: 'rose', feedback: 'worse', timestamp: Date.now() - 1000 }],
+      dyad,
+      oilDb: oils,
+    }).map((o) => o.id);
+    expect(ids).toEqual(['neroli']);
+  });
+
+  it('диада: масло под текущее время суток ранжируется выше, но остальные не роняются', () => {
+    const dyad: MixedEmotion = { key: 'love', label: 'Любовь', emotions: ['joy', 'trust'] };
+    const oils: OilEntry[] = [
+      { id: 'evening', name: 'E', description: '', icon: '', effects: [{ emotion: 'trust', mode: 'calm' }], dyads: ['love'], chronotype: ['evening'], instruction: '' },
+      { id: 'day', name: 'D', description: '', icon: '', effects: [{ emotion: 'joy', mode: 'support' }], dyads: ['love'], chronotype: ['day'], instruction: '' },
+    ];
+    const ids = candidateShortlist({ vector: star, hour: 12, feedback: [], dyad, oilDb: oils }).map((o) => o.id);
+    expect(ids[0]).toBe('day');
+    expect(ids).toContain('evening');
+  });
+
+  it('диада: масла с одной диадой ранжируются выше «универсальных»', () => {
+    const dyad: MixedEmotion = { key: 'love', label: 'Любовь', emotions: ['joy', 'trust'] };
+    const oils: OilEntry[] = [
+      { id: 'multi', name: 'M', description: '', icon: '', effects: [{ emotion: 'joy', mode: 'support' }], dyads: ['love', 'remorse', 'contempt'], chronotype: ['day'], instruction: '' },
+      { id: 'single', name: 'S', description: '', icon: '', effects: [{ emotion: 'trust', mode: 'support' }], dyads: ['love'], chronotype: ['day'], instruction: '' },
+    ];
+    const ids = candidateShortlist({ vector: star, hour: 12, feedback: [], dyad, oilDb: oils }).map((o) => o.id);
+    expect(ids[0]).toBe('single');
+  });
+
+  it('реальная база: каждая из 8 диад даёт непустой шорт-лист', () => {
+    for (const dyad of DYADS) {
+      const result = candidateShortlist({ vector: circle, hour: 12, feedback: [], dyad, oilDb: OIL_DATABASE });
+      expect(result.length, `диада «${dyad.label}» дала пустой шорт-лист`).toBeGreaterThan(0);
+    }
   });
 });

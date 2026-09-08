@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { inferArousal, selectPractice, bannedPracticeIds } from './practice';
+import { inferArousal, selectPractice, bannedPracticeIds, preferredPracticeIds } from './practice';
 
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date('2026-08-31T12:00:00Z');
@@ -54,6 +54,21 @@ describe('selectPractice', () => {
   it('всё в бане → фолбэк на первую из списка', () => {
     expect(selectPractice('sadness', 'low', new Set(['bodyScan', 'thermalImagery']))).toBe('bodyScan');
   });
+
+  it('«помогло» поднимает практику над дефолтной (когда есть альтернатива)', () => {
+    // sadness/low: ['bodyScan', 'thermalImagery'] → дефолт bodyScan
+    expect(selectPractice('sadness', 'low', undefined, new Set(['thermalImagery']))).toBe('thermalImagery');
+  });
+
+  it('бан сильнее приоритета: забаненная «помогла» практика не возвращается', () => {
+    // sadness/high: ['thermalImagery', 'bodyScan'] → thermalImagery забанена и «помогла»
+    expect(selectPractice('sadness', 'high', new Set(['thermalImagery']), new Set(['thermalImagery']))).toBe('bodyScan');
+  });
+
+  it('приоритет не перебивает единственный вариант клетки', () => {
+    // fear/high: единственный вариант grounding54321
+    expect(selectPractice('fear', 'high', undefined, new Set(['bodyScan']))).toBe('grounding54321');
+  });
 });
 
 describe('bannedPracticeIds', () => {
@@ -91,5 +106,35 @@ describe('bannedPracticeIds', () => {
       now
     );
     expect(banned.has('pmr')).toBe(true);
+  });
+});
+
+describe('preferredPracticeIds', () => {
+  it('пустая история → пустое множество', () => {
+    expect(preferredPracticeIds([], now).size).toBe(0);
+  });
+
+  it('«помогло» в окне → практика в приоритете', () => {
+    const preferred = preferredPracticeIds(
+      [{ practiceId: 'bodyScan', feedback: 'helped', timestamp: now.getTime() - DAY }],
+      now
+    );
+    expect(preferred.has('bodyScan')).toBe(true);
+  });
+
+  it('«помогло» старше banDays → не в приоритете', () => {
+    const preferred = preferredPracticeIds(
+      [{ practiceId: 'bodyScan', feedback: 'helped', timestamp: now.getTime() - 8 * DAY }],
+      now
+    );
+    expect(preferred.has('bodyScan')).toBe(false);
+  });
+
+  it('«не помогло» не даёт приоритет', () => {
+    const preferred = preferredPracticeIds(
+      [{ practiceId: 'pmr', feedback: 'not_helped', timestamp: now.getTime() - DAY }],
+      now
+    );
+    expect(preferred.size).toBe(0);
   });
 });

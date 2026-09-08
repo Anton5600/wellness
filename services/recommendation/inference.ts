@@ -1,6 +1,8 @@
-import { EmotionKey, PlutchikVector, EmotionalGraphEntry } from '../../types';
+import { EmotionKey, PlutchikVector, EmotionalGraphEntry, MixedEmotion } from '../../types';
 import { findOilByName } from '../../data/oilDatabase';
 import { EveningFeedbackEntry } from './effectiveness';
+import { isAdjacent, dyadFor } from './dyads';
+import { PLUTCHIK_ORDER } from './wheelShape';
 
 /** Русские подписи эмоций (для шаблонных текстов и LLM-промптов). */
 export const EMOTION_LABELS: Record<EmotionKey, string> = {
@@ -29,15 +31,57 @@ export const DEFAULT_PLUTCHIK: PlutchikVector = {
 /** На сколько поднимаем доминирующую эмоцию относительно baseline. */
 export const DOMINANT_BUMP = 0.2;
 
+/** Валидирует, что значение — одна из 8 эмоций Плутчика. */
+export const isEmotionKey = (value: unknown): value is EmotionKey =>
+  typeof value === 'string' && value in EMOTION_LABELS;
+
+/** «Любовь (Радость + Доверие)» — подпись диады для UI и LLM-промптов. */
+export const dyadLabel = (dyad: MixedEmotion): string =>
+  `${dyad.label} (${EMOTION_LABELS[dyad.emotions[0]]} + ${EMOTION_LABELS[dyad.emotions[1]]})`;
+
+/**
+ * Строит «текущий» вектор из baseline: доминанта поднята так, чтобы быть визуально
+ * главной осью колеса (не ниже максимума остальных осей + DOMINANT_BUMP), но не выше 1.0.
+ * Раньше доминанту просто прибавляли к baseline — при «тяжёлом» хроническом профиле
+ * колесо всё равно выпячивалось в сторону baseline, а не текущего состояния.
+ */
+export const bumpDominant = (baseline: PlutchikVector, dominant: EmotionKey): PlutchikVector => {
+  const base = baseline[dominant] ?? 0.5;
+  const maxOther = (Object.keys(baseline) as EmotionKey[])
+    .filter((k) => k !== dominant)
+    .reduce((m, k) => Math.max(m, baseline[k] ?? 0.5), 0);
+  return {
+    ...baseline,
+    [dominant]: Math.min(1.0, Math.max(base + DOMINANT_BUMP, maxOther + DOMINANT_BUMP)),
+  };
+};
+
+/**
+ * То же, что `bumpDominant`, но для диады: обе оси `a` и `b` подняты так, чтобы быть
+ * главными осями колеса (не ниже максимума остальных + DOMINANT_BUMP), не выше 1.0.
+ */
+export const bumpPair = (baseline: PlutchikVector, a: EmotionKey, b: EmotionKey): PlutchikVector => {
+  const baseA = baseline[a] ?? 0.5;
+  const baseB = baseline[b] ?? 0.5;
+  const maxOther = (Object.keys(baseline) as EmotionKey[])
+    .filter((k) => k !== a && k !== b)
+    .reduce((m, k) => Math.max(m, baseline[k] ?? 0.5), 0);
+  return {
+    ...baseline,
+    [a]: Math.min(1.0, Math.max(baseA + DOMINANT_BUMP, maxOther + DOMINANT_BUMP)),
+    [b]: Math.min(1.0, Math.max(baseB + DOMINANT_BUMP, maxOther + DOMINANT_BUMP)),
+  };
+};
+
 const KEYWORD_RULES: ReadonlyArray<{ emotion: EmotionKey; patterns: string[] }> = [
-  { emotion: 'joy', patterns: ['😊', '😄', 'радост', 'отлич', 'счаст', 'весел', 'прекрасн', 'супер', 'люблю', 'класс', 'здорово'] },
+  { emotion: 'joy', patterns: ['😊', '😄', 'радост', 'отлич', 'счаст', 'весел', 'прекрасн', 'супер', 'люблю', 'класс', 'здорово', 'бодр', 'заряж', 'драйв'] },
   { emotion: 'trust', patterns: ['спокой', 'уверен', 'довер', 'расслаб', 'стабильн', 'благодар', 'умиротвор', 'безопасн'] },
   { emotion: 'fear', patterns: ['тревог', 'тревож', 'страх', 'страшн', 'волнен', 'боюс', 'паник', 'пережива', 'неуверен', 'неспокой', 'неспокоен'] },
   { emotion: 'surprise', patterns: ['удивл', 'неожидан', 'внезапн', 'шок', 'пораж', 'вот это да'] },
   { emotion: 'sadness', patterns: ['😔', '😢', 'груст', 'устал', 'печал', 'тоск', 'плак', 'одинок', 'плохо', 'тяжело', 'опустош'] },
   { emotion: 'disgust', patterns: ['отвращ', 'противн', 'тошн', 'неприятн', 'мерзк', 'надоел'] },
   { emotion: 'anger', patterns: ['злюс', 'гнев', 'раздраж', 'бесит', 'злост', 'ярост', 'достал', 'ненавиж', 'зло'] },
-  { emotion: 'anticipation', patterns: ['жду', 'скорее бы', 'предвкуш', 'ожида', 'начну', 'план', 'вперёд', 'готов'] },
+  { emotion: 'anticipation', patterns: ['жду', 'скорее бы', 'предвкуш', 'ожида', 'начну', 'план', 'вперёд', 'готов', 'действ', 'старт'] },
 ];
 
 /**
@@ -60,26 +104,40 @@ const hasKeyword = (input: string, pattern: string): boolean => {
   return false;
 };
 
+/**
+ * Считает «вес» каждой эмоции по тексту микроввода: сколько паттернов совпало
+ * (через `hasKeyword`, с гвардом отрицаний «не…»). Нулевой вес — эмоция не выражена.
+ */
+export const scoreEmotions = (inputLower: string): Record<EmotionKey, number> => {
+  const scores = {} as Record<EmotionKey, number>;
+  for (const rule of KEYWORD_RULES) {
+    scores[rule.emotion] = rule.patterns.filter((p) => hasKeyword(inputLower, p)).length;
+  }
+  return scores;
+};
+
 export const inferEmotionState = (
   microInput: string,
   baseline: PlutchikVector
-): { vector: PlutchikVector; dominant: EmotionKey } => {
+): { vector: PlutchikVector; dominant: EmotionKey; dyad?: MixedEmotion } => {
   const inputLower = microInput.toLowerCase();
-  let dominant: EmotionKey = 'anticipation';
+  const scores = scoreEmotions(inputLower);
 
-  for (const rule of KEYWORD_RULES) {
-    if (rule.patterns.some((p) => hasKeyword(inputLower, p))) {
-      dominant = rule.emotion;
-      break;
-    }
-  }
+  // Эмоции с ненулевым весом, отсортированные по (вес desc, порядок колеса asc).
+  const matched = (Object.keys(scores) as EmotionKey[])
+    .filter((e) => scores[e] > 0)
+    .sort((a, b) => scores[b] - scores[a] || PLUTCHIK_ORDER.indexOf(a) - PLUTCHIK_ORDER.indexOf(b));
 
-  const vector: PlutchikVector = {
-    ...baseline,
-    [dominant]: Math.min(1.0, (baseline[dominant] ?? 0.5) + DOMINANT_BUMP),
-  };
+  const dominant: EmotionKey = matched[0] ?? 'anticipation';
+  const dyad = matched.length >= 2 && isAdjacent(matched[0], matched[1])
+    ? dyadFor(matched[0], matched[1]) ?? undefined
+    : undefined;
 
-  return { vector, dominant };
+  const vector = dyad
+    ? bumpPair(baseline, dyad.emotions[0], dyad.emotions[1])
+    : bumpDominant(baseline, dominant);
+
+  return dyad ? { vector, dominant, dyad } : { vector, dominant };
 };
 
 /**

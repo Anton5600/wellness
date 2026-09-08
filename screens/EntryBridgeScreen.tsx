@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { compassService } from '../services/compassService';
 import {
@@ -15,6 +16,15 @@ const FEEDBACK_OPTIONS: Array<{ value: EveningFeedback; label: string; icon: str
   { value: 'same', label: 'Так себе', icon: 'remove' },
   { value: 'worse', label: 'Не помогло', icon: 'thumb_down' },
 ];
+
+// Частицы в день разблокировки: разлетаются от центра круга наружу.
+const UNLOCK_PARTICLES = [
+  { x: -34, y: -20 }, { x: 32, y: -26 }, { x: -30, y: 22 }, { x: 36, y: 16 },
+  { x: 0, y: -40 }, { x: -40, y: -2 }, { x: 40, y: -2 }, { x: 0, y: 38 },
+];
+
+// Порог стрика, после которого «круг с мягким свечением» (гордость).
+const STREAK_GLOW_DAYS = 8;
 
 /**
  * «Утренний мост» — короткий (≈5 сек) переход «вчера → сегодня» перед ритуалом.
@@ -52,6 +62,9 @@ const EntryBridgeScreen: React.FC = () => {
   const greeting = getGreeting(ctx.timeOfDay, ctx.streak, ctx.yesterday.completed);
   const practice = ctx.yesterday.practiceId ? PRACTICE_BY_ID[ctx.yesterday.practiceId] : undefined;
   const yesterdayDate = compassService.getYesterdayDateStr();
+
+  const isUnlockDay = ctx.today.isUnlockDay;
+  const streakGlow = ctx.streak.longest >= STREAK_GLOW_DAYS;
 
   const saveFeedback = async (value: EveningFeedback) => {
     setFeedbackSaving(true);
@@ -92,17 +105,65 @@ const EntryBridgeScreen: React.FC = () => {
 
   return (
     <div
-      className={`flex min-h-[100dvh] flex-col justify-center px-6 py-10 ${
+      className={`relative overflow-hidden flex min-h-[100dvh] flex-col justify-center px-6 py-10 ${
         decision.warmBackground
           ? 'bg-gradient-to-b from-amber-50 to-background-light dark:from-amber-500/10 dark:to-background-dark'
           : 'bg-background-light dark:bg-background-dark'
       }`}
     >
+      {/* Тёплый свет разливается от центра (вчера был критический пульс). */}
+      {decision.warmBackground && (
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.4, ease: 'easeOut' }}
+          style={{ background: 'radial-gradient(circle at 50% 38%, rgba(251,191,36,0.30), transparent 62%)' }}
+        />
+      )}
+
+      {/* Ритуал входа: точка мягко раскрывается в круг. Контекст: свечение / частицы. */}
+      <div className="mb-6 flex justify-center">
+        <motion.div
+          className="relative size-20"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            initial={{ scale: 0.05, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 1.1, ease: 'easeOut' }}
+            style={{
+              background: 'radial-gradient(circle, rgba(152,194,129,0.55), rgba(152,194,129,0) 70%)',
+              boxShadow: streakGlow ? '0 0 28px 8px rgba(152,194,129,0.35)' : undefined,
+            }}
+          />
+          {isUnlockDay &&
+            UNLOCK_PARTICLES.map((p, i) => (
+              <motion.span
+                key={i}
+                className="absolute rounded-full"
+                style={{ left: '50%', top: '50%', width: 6, height: 6, marginLeft: -3, marginTop: -3, background: '#f59e0b' }}
+                initial={{ x: 0, y: 0, opacity: 0, scale: 0 }}
+                animate={{ x: p.x, y: p.y, opacity: [0, 1, 0], scale: [0, 1, 0.5] }}
+                transition={{ duration: 1.1, delay: 0.4 + i * 0.06, ease: 'easeOut' }}
+              />
+            ))}
+        </motion.div>
+      </div>
+
       <div className="space-y-6">
-        <div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.35 }}
+        >
           <p className="text-primary text-xs font-bold uppercase tracking-widest mb-2">Утренний мост</p>
           <h1 className="text-3xl font-extrabold text-forest dark:text-white leading-tight">{greeting}</h1>
-        </div>
+        </motion.div>
 
         {decision.scenario === 'fresh_day' && (
           <>

@@ -9,7 +9,8 @@ const CYCLE_SEC = 14;
 
 const jitter = (i: number): number => ((i % 3) - 1) * 8;
 
-/** Мантра: фраза появляется, держится, растворяется как дым — цикл 14с. */
+/** Мантра: фраза появляется, держится, растворяется как дым — цикл 14с.
+ *  На каждом цикле показывается следующая фраза из набора (по кругу). */
 export const MantraLoopPractice: React.FC<PracticeTrackProps> = ({
   durationSeconds,
   dominant,
@@ -20,7 +21,9 @@ export const MantraLoopPractice: React.FC<PracticeTrackProps> = ({
   const cycle = Math.floor(elapsed / CYCLE_SEC);
   const t = elapsed % CYCLE_SEC;
   const fading = t >= 8;
-  const words = MANTRAS[dominant].split(' ');
+  const phrases = MANTRAS[dominant];
+  const phrase = phrases[cycle % phrases.length];
+  const words = phrase.split(' ');
 
   useEffect(() => {
     hapticImpact('light');

@@ -22,6 +22,11 @@ describe('daysBetween', () => {
 });
 
 describe('computeStreakTransition', () => {
+  it('первый чек-ин (lastActiveDate пустая) — стартует сегодня с current=1', () => {
+    const out = computeStreakTransition(streak(1, 1, ''), '2026-09-02');
+    expect(out).toEqual({ current: 1, longest: 1, lastActiveDate: '2026-09-02' });
+  });
+
   it('gap 0 (уже сегодня активны) — без изменений', () => {
     const prev = streak(5, 7, '2026-09-02');
     expect(computeStreakTransition(prev, '2026-09-02')).toEqual(prev);

@@ -1,31 +1,27 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { PlutchikWheel } from './PlutchikWheel';
 import { useAuth } from '../context/AuthContext';
 import { compassService } from '../services/compassService';
 import { getUserOils } from '../services/firestoreService';
 import { findOilById } from '../data/oilDatabase';
 import { PRACTICE_BY_ID } from '../data/practices';
-import { selectPractice, bannedPracticeIds } from '../services/recommendation/practice';
+import { selectPractice, bannedPracticeIds, preferredPracticeIds } from '../services/recommendation/practice';
 import { UNLOCK_DAYS } from '../services/recommendation/unlock';
 import { readDevUnlockOverride, readDevPatternOverride, buildDevPattern } from '../services/devBridgeOverride';
 import { getPracticeFeedbackEntries, getTodayPartialSession } from '../services/practiceMemory';
 import { PulseCheckIn } from './PulseCheckIn';
 import { PatternCard } from './PatternCard';
-import { EMOTION_LABELS } from '../services/recommendation/inference';
+import { EMOTION_LABELS, dyadLabel } from '../services/recommendation/inference';
 import { detectCrisis, CrisisDetectedError } from '../services/recommendation/safety';
 import { CRISIS_RESOURCES, GROUNDING_EXERCISES } from '../data/crisis';
 import { EveningFeedback, EmotionalGraphEntry, PlutchikProfile } from '../types';
-import { TimeOfDayPattern } from '../services/recommendation/pattern';
+import { TimeOfDayPattern, NEGATIVE_EMOTIONS } from '../services/recommendation/pattern';
+import { eveningFeedbackOptions } from '../services/recommendation/feedback';
 import { requestPermissions, schedulePatternReminder } from '../services/notificationService';
 import { resolveApiBaseUrl } from '../services/apiBase';
 import { encodeSttPcm, STT_SAMPLE_RATE } from '../services/pcmEncoder';
-
-const FEEDBACK_OPTIONS: Array<{ value: EveningFeedback; label: string; icon: string }> = [
-  { value: 'better', label: 'Стало лучше', icon: 'thumb_up' },
-  { value: 'same', label: 'Без изменений', icon: 'remove' },
-  { value: 'worse', label: 'Не помогло', icon: 'thumb_down' },
-];
 
 /**
  * Порог стрика → фича(и), открывающаяся на этом дне (для баннера «открылась фича»).
@@ -172,6 +168,7 @@ export const DailyRitual: React.FC = () => {
         setCrisis(true);
         setInput('');
       } else {
+        console.error('[DailyRitual] Не удалось получить рекомендацию:', e);
         setError('Не удалось получить рекомендацию. Попробуйте ещё раз.');
       }
     } finally {
@@ -351,16 +348,25 @@ export const DailyRitual: React.FC = () => {
   };
 
   const oil = todayEntry?.aromaId ? findOilById(todayEntry.aromaId) : undefined;
-  const dominantLabel = todayEntry ? EMOTION_LABELS[todayEntry.dominant] : '';
+  const dominantLabel = todayEntry
+    ? todayEntry.dyad
+      ? dyadLabel(todayEntry.dyad)
+      : EMOTION_LABELS[todayEntry.dominant]
+    : '';
+  const isPositiveDominant = todayEntry ? !NEGATIVE_EMOTIONS.includes(todayEntry.dominant) : false;
+  const feedbackOptions = eveningFeedbackOptions(isPositiveDominant);
   const hasRecommendedOil = todayEntry?.aromaId ? ownedOilIds.has(todayEntry.aromaId) : true;
 
-  // Практика дня: детерминированный выбор по доминирующей эмоции + бан «не помогло».
+  // Практика дня: детерминированный выбор по доминирующей эмоции + бан «не помогло» + приоритет «помогло».
   const practiceId = useMemo(() => {
     if (!todayEntry) return null;
+    const feedback = getPracticeFeedbackEntries(user?.uid ?? 'guest');
+    const now = new Date();
     return selectPractice(
       todayEntry.dominant,
       undefined,
-      bannedPracticeIds(getPracticeFeedbackEntries(user?.uid ?? 'guest'), new Date())
+      bannedPracticeIds(feedback, now),
+      preferredPracticeIds(feedback, now)
     );
   }, [todayEntry, user?.uid]);
   const practice = practiceId ? PRACTICE_BY_ID[practiceId] : null;
@@ -539,7 +545,20 @@ export const DailyRitual: React.FC = () => {
       ) : (
         <>
           {/* Результат */}
-          <div className="bg-white dark:bg-[#1f1f1f] rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="relative overflow-hidden bg-white dark:bg-[#1f1f1f] rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800"
+          >
+            {/* Переход в цвет эмоции: полоса тянется в цвете доминанты (0.5 с). */}
+            <motion.div
+              className="absolute top-0 left-0 right-0 h-1 origin-left"
+              style={{ backgroundColor: todayEntry.color ?? '#98c281' }}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+            />
             <div className="flex items-center gap-3 mb-4">
               <div className="size-12 rounded-2xl bg-gradient-to-tr from-primary to-emerald-400 text-white flex items-center justify-center shrink-0 shadow-md">
                 <span className="material-symbols-outlined text-2xl">{oil?.icon ?? 'spa'}</span>
@@ -554,7 +573,7 @@ export const DailyRitual: React.FC = () => {
               <div className="mb-4">
                 <PlutchikWheel vector={todayEntry.plutchikInferred} baseline={profile.baseline} size={280} />
                 <p className="text-center text-sm font-bold text-forest dark:text-white mt-3">
-                  Доминанта: <span className="text-primary">{dominantLabel}</span>
+                  {todayEntry.dyad ? 'Смешанная эмоция' : 'Доминанта'}: <span className="text-primary">{dominantLabel}</span>
                 </p>
               </div>
             )}
@@ -630,17 +649,31 @@ export const DailyRitual: React.FC = () => {
                 onPulseRecorded={(entry) => setTodayEntry(entry)}
               />
             </div>
-          </div>
+          </motion.div>
 
           {/* Анонс разблокировки (сценарий 5) — показывается после ритуала, не до. */}
           {unlockNotice && (
-            <div className="bg-gradient-to-br from-primary/20 to-sage/20 dark:from-primary/10 dark:to-sage/10 rounded-2xl p-4 border border-primary/30 flex items-start gap-3">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+              className="relative overflow-hidden bg-gradient-to-br from-primary/20 to-sage/20 dark:from-primary/10 dark:to-sage/10 rounded-2xl p-4 border border-primary/30 flex items-start gap-3"
+            >
+              {/* Частицы / свечение разблокировки. */}
+              <motion.span
+                aria-hidden
+                className="pointer-events-none absolute -top-6 -right-6 size-20 rounded-full"
+                initial={{ opacity: 0, scale: 0.4 }}
+                animate={{ opacity: [0, 0.55, 0], scale: 1 }}
+                transition={{ duration: 1.6, ease: 'easeOut' }}
+                style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.55), transparent 70%)' }}
+              />
               <span className="material-symbols-outlined text-primary text-2xl shrink-0">auto_awesome</span>
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-primary mb-0.5">И кое-что новое</p>
                 <p className="text-sm font-bold text-forest dark:text-white">Открылось: {unlockNotice}</p>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Карточка наблюдения «Паттерны» — вместо пустого баннера «Открылось». */}
@@ -664,10 +697,12 @@ export const DailyRitual: React.FC = () => {
             <p className="text-sm text-sage dark:text-gray-400 mt-1 mb-4">
               {feedback
                 ? 'Спасибо! Ваш отзыв учтён при следующих рекомендациях.'
+                : isPositiveDominant
+                ? 'Отметьте к вечеру — это поможет закрепить подходящие масла.'
                 : 'Отметьте к вечеру — это поможет исключить неподходящие масла.'}
             </p>
             <div className="grid grid-cols-3 gap-2">
-              {FEEDBACK_OPTIONS.map((opt) => (
+              {feedbackOptions.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => handleFeedback(opt.value)}

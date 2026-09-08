@@ -190,7 +190,12 @@ export const PracticePlayer: React.FC<PracticePlayerProps> = ({
               key="active"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
+              exit={{
+                opacity: 0,
+                scale: 1.03,
+                filter: 'blur(8px)',
+                transition: { duration: 1, ease: 'easeInOut' },
+              }}
               className="w-full flex flex-col items-center"
             >
               <TrackComponent

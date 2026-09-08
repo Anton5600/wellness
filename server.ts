@@ -6,13 +6,69 @@ import { candidateShortlist } from "./services/recommendation/shortlist";
 import {
   inferEmotionState,
   buildFeedbackEntries,
+  bumpDominant,
+  bumpPair,
+  isEmotionKey,
   DEFAULT_PLUTCHIK,
   EMOTION_LABELS,
+  dyadLabel,
 } from "./services/recommendation/inference";
 import { breathingPatternFor } from "./services/recommendation/breathing";
-import { colorForDominant, isValidHexColor, EMOTION_HEX } from "./services/recommendation/color";
+import { colorForDominant, colorForDyad } from "./services/recommendation/color";
 import { detectCrisis } from "./services/recommendation/safety";
-import { OilEntry, EmotionKey, EffectMode } from "./types";
+import { OilEntry, EmotionKey, EffectMode, MixedEmotion } from "./types";
+import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { getAuth, Auth } from "firebase-admin/auth";
+
+// --- Мост VK/Яндекс → Firebase Auth (custom token) ---
+//
+// VK/Яндекс дают собственный uid (`vk:...` / `yandex:...`), не привязанный к Firebase Auth.
+// Правила Firestore `isOwner(userId)` требуют `request.auth.uid == userId`, поэтому для таких
+// пользователей доступ закрыт. Чтобы данные синхронизировались через Firestore, сервер после
+// OAuth-проверки выпускает Firebase custom token; клиент входит через `signInWithCustomToken`
+// и получает обычную Firebase-сессию с тем же uid. Без сервисного аккаунта мост отключается —
+// поведение как раньше (данные только в localStorage).
+
+let adminAuth: Auth | null = null;
+
+const ensureAdminAuth = (): Auth | null => {
+  if (adminAuth) return adminAuth;
+  try {
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+    if (!projectId || !clientEmail || !privateKey) return null;
+    if (getApps().length === 0) {
+      initializeApp({
+        credential: cert({ projectId, clientEmail, privateKey: privateKey.replace(/\\n/g, "\n") }),
+      });
+    }
+    adminAuth = getAuth();
+  } catch (e) {
+    console.warn("[auth] firebase-admin init failed (VK/Yandex не будут синхронизироваться):", e);
+    adminAuth = null;
+  }
+  return adminAuth;
+};
+
+const mintFirebaseCustomToken = async (uid: string, name: string, email: string): Promise<string | null> => {
+  const auth = ensureAdminAuth();
+  if (!auth) return null;
+  try {
+    // Сохраняем имя/почту в Firebase-пользователе, чтобы после signInWithCustomToken UI их видел.
+    try {
+      await auth.updateUser(uid, { displayName: name, email, emailVerified: true });
+    } catch {
+      try {
+        await auth.createUser({ uid, displayName: name, email, emailVerified: true });
+      } catch { /* email-коллизия не критична: uid — источник правды, пользователь создастся при sign-in */ }
+    }
+    return await auth.createCustomToken(uid);
+  } catch (e) {
+    console.warn("[auth] mint custom token failed:", e);
+    return null;
+  }
+};
 
 // --- Recommendation engine (rules → DeepSeek/Gemini → strict JSON) ---
 
@@ -43,14 +99,14 @@ function parseLooseJson(text: string): Record<string, unknown> | null {
   return null;
 }
 
-/** Извлекает из распарсенного JSON LLM поля выбора масла (с валидацией цвета). */
+/** Извлекает из распарсенного JSON LLM поля выбора масла (с валидацией доминанты). */
 const toSelection = (parsed: Record<string, unknown> | null): OilSelection | null => {
   if (!parsed || typeof parsed.oilId !== "string") return null;
   return {
     oilId: parsed.oilId,
+    dominant: isEmotionKey(parsed.dominant) ? parsed.dominant : undefined,
     aromaReason: typeof parsed.aromaReason === "string" ? parsed.aromaReason : "",
     insight: typeof parsed.insight === "string" ? parsed.insight : "",
-    color: isValidHexColor(parsed.color) ? parsed.color : undefined,
     tomorrowTeaser:
       typeof parsed.tomorrowTeaser === "string" && parsed.tomorrowTeaser.trim()
         ? parsed.tomorrowTeaser.trim()
@@ -81,42 +137,43 @@ const defaultTomorrowTeaser = (dominantLabel: string): string =>
 
 interface OilSelection {
   oilId: string;
+  dominant?: EmotionKey;
   aromaReason: string;
   insight: string;
-  color?: string;
   tomorrowTeaser?: string;
 }
 
 async function selectOilWithLLM(
   shortlist: OilEntry[],
   microInput: string,
-  dominantLabel: string
+  dyad?: MixedEmotion
 ): Promise<OilSelection | null> {
   const summary = shortlist
     .map((o) => `- id: ${o.id} | ${o.name} — ${o.description} (${o.instruction})`)
     .join("\n");
 
-  const palette = Object.entries(EMOTION_HEX)
-    .map(([emotion, hex]) => `${EMOTION_LABELS[emotion as EmotionKey]} ${hex}`)
-    .join(", ");
-
   const system =
     "Ты — эмпатичный ароматерапевт в приложении «Внутренний Компас». " +
-    "Выбери РОВНО одно эфирное масло из предложенного списка (по полю id), " +
-    "которое наилучшим образом поддержит текущее состояние пользователя. " +
+    "По словам пользователя определи его доминирующую эмоцию и выбери РОВНО одно эфирное масло " +
+    "из предложенного списка (по полю id), которое наилучшим образом поддержит текущее состояние. " +
     "Не выдумывай масла, которых нет в списке. " +
-    "Подбери «цвет дня» строго из палитры эмоций и напиши короткий интригующий тизер на завтра.";
+    "Напиши короткий интригующий тизер на завтра.";
+
+  const dyadHint = dyad
+    ? [
+        `Сейчас активны две соседние эмоции — «${dyadLabel(dyad)}». Выбери масло, поддерживающее ОБЕ.`,
+        "",
+      ]
+    : [];
 
   const user = [
-    `Текущее состояние пользователя: «${dominantLabel}».`,
     `Его слова: «${microInput}».`,
     "",
+    ...dyadHint,
     "Доступные масла (шорт-лист):",
     summary,
     "",
-    `Палитра цвета дня (hex по эмоции): ${palette}.`,
-    "",
-    'Ответь строго одним JSON-объектом без markdown: {"oilId":"<id>","aromaReason":"<почему это масло подходит, 1-2 предложения>","insight":"<тёплое поддерживающее напутствие на сегодня, 1-2 предложения>","color":"<hex из палитры>","tomorrowTeaser":"<одна короткая интригующая фраза о том, что ждёт завтра>"}',
+    'Ответь строго одним JSON-объектом без markdown: {"dominant":"<joy|trust|fear|surprise|sadness|disgust|anger|anticipation>","oilId":"<id>","aromaReason":"<почему это масло подходит, 1-2 предложения>","insight":"<тёплое поддерживающее напутствие на сегодня, 1-2 предложения>","tomorrowTeaser":"<одна короткая интригующая фраза о том, что ждёт завтра>"}',
   ].join("\n");
 
   // 1) DeepSeek (primary)
@@ -233,12 +290,14 @@ async function startServer() {
       const userEmail = email || `vk_${user_id}@vk.com`;
       const userName = `${vkUser.first_name || 'Пользователь'} ${vkUser.last_name || 'VK'}`.trim();
 
+      const customToken = await mintFirebaseCustomToken(`vk:${user_id}`, userName, userEmail);
       const userPayload = {
         uid: `vk:${user_id}`,
         email: userEmail,
         name: userName,
         provider: 'vk',
-        vkUserId: user_id
+        vkUserId: user_id,
+        ...(customToken ? { customToken } : {}),
       };
       res.json(userPayload);
     } catch (err: any) {
@@ -457,13 +516,16 @@ async function startServer() {
       const userEmail = email || `vk_${user_id}@vk.com`;
       const userName = `${vkUser.first_name || 'Пользователь'} ${vkUser.last_name || 'VK'}`.trim();
 
+      const customToken = await mintFirebaseCustomToken(`vk:${user_id}`, userName, userEmail);
+
       // Return script to pass user info back to window.opener or redirect
       const userPayload = JSON.stringify({
         uid: `vk:${user_id}`,
         email: userEmail,
         name: userName,
         provider: 'vk',
-        vkUserId: user_id
+        vkUserId: user_id,
+        ...(customToken ? { customToken } : {}),
       });
 
       res.send(`
@@ -617,12 +679,15 @@ async function startServer() {
       const userEmail = yandexUser.default_email || (yandexUser.login ? `${yandexUser.login}@yandex.ru` : "yandex_user@yandex.ru");
       const userName = yandexUser.display_name || yandexUser.real_name || `${yandexUser.first_name || ""} ${yandexUser.last_name || ""}`.trim() || yandexUser.login || "Пользователь Яндекс";
 
+      const customToken = await mintFirebaseCustomToken(`yandex:${yandexUser.id}`, userName, userEmail);
+
       const userPayload = JSON.stringify({
         uid: `yandex:${yandexUser.id}`,
         email: userEmail,
         name: userName,
         provider: 'yandex',
-        yandexUserId: yandexUser.id
+        yandexUserId: yandexUser.id,
+        ...(customToken ? { customToken } : {}),
       });
 
       res.send(`
@@ -778,16 +843,32 @@ async function startServer() {
       }
 
       const baseline = plutchikProfile?.baseline || DEFAULT_PLUTCHIK;
-      const { vector, dominant } = inferEmotionState(microInput, baseline);
+      const keyword = inferEmotionState(microInput, baseline);
 
       const hour = typeof context?.hour === "number" ? context.hour : new Date().getHours();
       const stuckFlag = Boolean(context?.stuckFlag);
       const eveningHarder = Boolean(context?.eveningHarder);
-      const dominantLabel = EMOTION_LABELS[dominant];
       const feedback = buildFeedbackEntries(emotionalHistory);
-      const shortlist = candidateShortlist({ vector, hour, feedback, dominant, eveningHarder });
+      const shortlist = candidateShortlist({
+        vector: keyword.vector,
+        hour,
+        feedback,
+        dominant: keyword.dominant,
+        dyad: keyword.dyad,
+        eveningHarder,
+      });
 
-      const selection = await selectOilWithLLM(shortlist, microInput, dominantLabel);
+      const selection = await selectOilWithLLM(shortlist, microInput, keyword.dyad);
+      const dyad = keyword.dyad;
+      // При диаде доминанта детерминирована (сильнейшая из пары); LLM не переопределяет её.
+      // Иначе — доминанта и масло из одного источника (LLM), фолбэк — детерминированный матчер.
+      const dominant: EmotionKey = dyad
+        ? keyword.dominant
+        : selection?.dominant ?? keyword.dominant;
+      const vector = dyad
+        ? bumpPair(baseline, dyad.emotions[0], dyad.emotions[1])
+        : bumpDominant(baseline, dominant);
+      const dominantLabel = dyad ? dyadLabel(dyad) : EMOTION_LABELS[dominant];
       const chosen =
         selection && shortlist.some((o) => o.id === selection.oilId)
           ? shortlist.find((o) => o.id === selection.oilId)!
@@ -797,12 +878,13 @@ async function startServer() {
         result: {
           plutchikInferred: vector,
           dominant,
+          dyad: dyad ?? null,
           aroma: chosen.name,
           aromaId: chosen.id,
           aromaReason: selection?.aromaReason || defaultAromaReason(chosen, dominant),
           insight: selection?.insight || defaultInsight(chosen),
           breathing: breathingPatternFor(stuckFlag),
-          color: selection?.color || colorForDominant(dominant),
+          color: dyad ? colorForDyad(dyad) : colorForDominant(dominant),
           tomorrowTeaser: selection?.tomorrowTeaser || defaultTomorrowTeaser(dominantLabel),
         },
       });

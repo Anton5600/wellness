@@ -62,6 +62,24 @@ export interface EmotionHistoryEntry {
 
 export type PlutchikVector = Record<EmotionKey, number>;
 
+/** Ключи первичных диад Плутчика (две соседние эмоции колеса, активные одновременно). */
+export type MixedEmotionKey =
+  | 'love'
+  | 'submission'
+  | 'alarm'
+  | 'disappointment'
+  | 'remorse'
+  | 'contempt'
+  | 'aggressiveness'
+  | 'optimism';
+
+/** Смешанная эмоция (диада): пара соседних эмоций в каноническом порядке по колесу. */
+export interface MixedEmotion {
+  key: MixedEmotionKey;
+  label: string;
+  emotions: [EmotionKey, EmotionKey];
+}
+
 export type EveningFeedback = 'better' | 'same' | 'worse';
 
 export interface CompassSettings {
@@ -76,12 +94,16 @@ export interface PlutchikProfile {
   lastWeekly: PlutchikVector;
   trends: Record<EmotionKey, string>;
   lastWeeklyDate: string;
+  /** Метка времени последней записи (мс) — для LWW-синхронизации между устройствами. */
+  updatedAt?: number;
 }
 
 export interface StreakInfo {
   current: number;
   longest: number;
   lastActiveDate: string;
+  /** Метка времени последней записи (мс) — для LWW-синхронизации между устройствами. */
+  updatedAt?: number;
 }
 
 export interface EmotionalGraphEntry {
@@ -107,6 +129,10 @@ export interface EmotionalGraphEntry {
   pulses?: PulseEntry[];
   /** Практика дня, зафиксированная в момент ритуала (не пересчитывается при бане за ночь). */
   practiceId?: PracticeId;
+  /** Смешанная эмоция (диада Плутчика), если две соседние эмоции активны одновременно. */
+  dyad?: MixedEmotion;
+  /** Метка времени последней записи (мс) — для LWW-синхронизации между устройствами. */
+  updatedAt?: number;
 }
 
 // --- «Пульс дня»: повторный чек-ин состояния в течение дня ---
@@ -157,6 +183,8 @@ export interface OilEntry {
   description: string;
   icon: string;
   effects: OilEffect[]; // на какие эмоции и как
+  /** Смешанные эмоции (диады), для которых это масло рекомендовано. */
+  dyads?: MixedEmotionKey[];
   chronotype: Chronotype[]; // утро/день/вечер
   instruction: string; // «1 капля на ладони, 3 вдоха»
   price?: number;

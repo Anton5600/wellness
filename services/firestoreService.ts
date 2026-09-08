@@ -3,6 +3,7 @@ import { collection, addDoc, query, where, getDocs, deleteDoc, doc, setDoc, getD
 import { db } from '../firebaseConfig';
 import { EmotionHistoryEntry, EmotionKey, UserOil, OilCatalogItem, EmotionalGraphEntry, PlutchikProfile, StreakInfo, EveningFeedback, PulseEntry } from '../types';
 import { OILS_CATALOG } from '../data/oils';
+import { mergeGraphByFreshness, pickNewer } from './syncMerge';
 
 const withTimeout = <T>(promise: Promise<T>, timeoutMs = 1500): Promise<T> => {
   return Promise.race([
@@ -257,15 +258,16 @@ const writeLocal = (key: string, data: unknown): void => {
 // --- emotionalGraph (записи чек-ина по дате) ---
 
 export const saveEmotionalGraphEntry = async (userId: string, entry: EmotionalGraphEntry): Promise<EmotionalGraphEntry> => {
+  const stamped: EmotionalGraphEntry = { ...entry, updatedAt: Date.now() };
   const graph = readLocal<Record<string, EmotionalGraphEntry>>(graphKey(userId), {});
-  graph[entry.date] = entry;
+  graph[stamped.date] = stamped;
   writeLocal(graphKey(userId), graph);
 
   if (userId && userId !== 'guest') {
-    setDoc(doc(db, 'emotionalGraph', `${userId}_${entry.date}`), { userId, ...entry })
+    setDoc(doc(db, 'emotionalGraph', `${userId}_${stamped.date}`), { userId, ...stamped })
       .catch((e) => console.warn('Firestore graph save failed (saved locally):', e));
   }
-  return entry;
+  return stamped;
 };
 
 export const getEmotionalGraphEntry = async (userId: string, date: string): Promise<EmotionalGraphEntry | null> => {
@@ -289,8 +291,8 @@ export const getEmotionalGraphEntry = async (userId: string, date: string): Prom
 };
 
 export const getEmotionalGraphEntries = async (userId: string, count?: number): Promise<EmotionalGraphEntry[]> => {
-  const localEntries = Object.values(readLocal<Record<string, EmotionalGraphEntry>>(graphKey(userId), {}));
-  const remoteEntries: EmotionalGraphEntry[] = [];
+  const localObj = readLocal<Record<string, EmotionalGraphEntry>>(graphKey(userId), {});
+  const remoteObj: Record<string, EmotionalGraphEntry> = {};
 
   if (userId && userId !== 'guest') {
     try {
@@ -298,22 +300,20 @@ export const getEmotionalGraphEntries = async (userId: string, count?: number): 
         getDocs(query(collection(db, 'emotionalGraph'), where('userId', '==', userId))),
         1500
       );
-      snap.forEach((d) => remoteEntries.push(d.data() as EmotionalGraphEntry));
+      snap.forEach((d) => {
+        const e = d.data() as EmotionalGraphEntry;
+        if (e && e.date) remoteObj[e.date] = e;
+      });
     } catch (e) {
       console.warn('Firestore graph read failed (using local):', e);
     }
   }
 
-  const map = new Map<string, EmotionalGraphEntry>();
-  [...localEntries, ...remoteEntries].forEach((e) => {
-    if (e && e.date) map.set(e.date, e);
-  });
-  const merged = Array.from(map.values()).sort((a, b) => b.timestamp - a.timestamp);
-
-  const asObj: Record<string, EmotionalGraphEntry> = {};
-  merged.forEach((e) => { asObj[e.date] = e; });
+  // LWW: новая запись побеждает старую (локальная офлайн-запись не перекрывается удалённой).
+  const { merged: asObj } = mergeGraphByFreshness(localObj, remoteObj);
   writeLocal(graphKey(userId), asObj);
 
+  const merged = Object.values(asObj).sort((a, b) => b.timestamp - a.timestamp);
   return count === undefined ? merged : merged.slice(0, count);
 };
 
@@ -323,11 +323,12 @@ export const saveEmotionalGraphPulse = async (userId: string, date: string, puls
   if (!entry) return null;
 
   entry.pulses = [...(entry.pulses ?? []), pulse];
+  entry.updatedAt = Date.now();
   graph[date] = entry;
   writeLocal(graphKey(userId), graph);
 
   if (userId && userId !== 'guest') {
-    updateDoc(doc(db, 'emotionalGraph', `${userId}_${date}`), { pulses: entry.pulses })
+    updateDoc(doc(db, 'emotionalGraph', `${userId}_${date}`), { pulses: entry.pulses, updatedAt: entry.updatedAt })
       .catch((e) => console.warn('Firestore pulse save failed:', e));
   }
   return entry;
@@ -339,11 +340,12 @@ export const saveEveningFeedbackFirestore = async (userId: string, date: string,
   if (!entry) return null;
 
   entry.eveningFeedback = feedback;
+  entry.updatedAt = Date.now();
   graph[date] = entry;
   writeLocal(graphKey(userId), graph);
 
   if (userId && userId !== 'guest') {
-    updateDoc(doc(db, 'emotionalGraph', `${userId}_${date}`), { eveningFeedback: feedback })
+    updateDoc(doc(db, 'emotionalGraph', `${userId}_${date}`), { eveningFeedback: feedback, updatedAt: entry.updatedAt })
       .catch((e) => console.warn('Firestore feedback save failed:', e));
   }
   return entry;
@@ -371,12 +373,13 @@ export const getPlutchikProfile = async (userId: string, fallback: PlutchikProfi
 };
 
 export const savePlutchikProfile = async (userId: string, profile: PlutchikProfile): Promise<PlutchikProfile> => {
-  writeLocal(profileKey(userId), profile);
+  const stamped: PlutchikProfile = { ...profile, updatedAt: Date.now() };
+  writeLocal(profileKey(userId), stamped);
   if (userId && userId !== 'guest') {
-    setDoc(doc(db, 'plutchikProfiles', userId), profile)
+    setDoc(doc(db, 'plutchikProfiles', userId), stamped)
       .catch((e) => console.warn('Firestore profile save failed:', e));
   }
-  return profile;
+  return stamped;
 };
 
 /**
@@ -420,10 +423,98 @@ export const getStreakInfo = async (userId: string, fallback: StreakInfo): Promi
 };
 
 export const saveStreakInfo = async (userId: string, streak: StreakInfo): Promise<StreakInfo> => {
-  writeLocal(streakKey(userId), streak);
+  const stamped: StreakInfo = { ...streak, updatedAt: Date.now() };
+  writeLocal(streakKey(userId), stamped);
   if (userId && userId !== 'guest') {
-    setDoc(doc(db, 'streaks', userId), streak)
+    setDoc(doc(db, 'streaks', userId), stamped)
       .catch((e) => console.warn('Firestore streak save failed:', e));
   }
-  return streak;
+  return stamped;
+};
+
+// --- Двунаправленная LWW-синхронизация с Firestore ---
+//
+// Подтягивает актуальные данные с других устройств (граф/профиль/стрик) и отправляет
+// локально-новые записи (офлайн-записи, которые не дошли до Firestore). Новая запись
+// побеждает старую по `updatedAt` (фолбэк — `timestamp` для графа). Каждая из трёх частей
+// независима: сбой одной не роняет остальные.
+
+const syncGraph = async (userId: string): Promise<void> => {
+  const key = graphKey(userId);
+  const local = readLocal<Record<string, EmotionalGraphEntry>>(key, {});
+  const remote: Record<string, EmotionalGraphEntry> = {};
+
+  try {
+    const snap = await withTimeout(
+      getDocs(query(collection(db, 'emotionalGraph'), where('userId', '==', userId))),
+      8000
+    );
+    snap.forEach((d) => {
+      const e = d.data() as EmotionalGraphEntry;
+      if (e && e.date) remote[e.date] = e;
+    });
+  } catch (e) {
+    // Офлайн/таймаут: нечего тянуть, и без удалённого состояния не знаем, что новее —
+    // не пушим, чтобы не затереть свежие удалённые записи.
+    console.warn('[sync] Firestore graph pull failed:', e);
+    return;
+  }
+
+  const { merged, localNewer } = mergeGraphByFreshness(local, remote);
+  writeLocal(key, merged);
+
+  // Отправляем локально-новые записи (офлайн-восстановление / первая миграция).
+  for (const entry of localNewer) {
+    setDoc(doc(db, 'emotionalGraph', `${userId}_${entry.date}`), { userId, ...entry })
+      .catch((e) => console.warn('[sync] graph push failed:', e));
+  }
+};
+
+const syncProfile = async (userId: string): Promise<void> => {
+  const key = profileKey(userId);
+  const local = readLocal<PlutchikProfile | null>(key, null);
+  let remote: PlutchikProfile | null = null;
+
+  try {
+    const snap = await withTimeout(getDoc(doc(db, 'plutchikProfiles', userId)), 8000);
+    if (snap.exists()) remote = snap.data() as PlutchikProfile;
+  } catch (e) {
+    console.warn('[sync] Firestore profile pull failed:', e);
+    return;
+  }
+
+  const { winner, pushLocal } = pickNewer(local, remote);
+  if (winner) writeLocal(key, winner);
+  if (pushLocal && winner) {
+    setDoc(doc(db, 'plutchikProfiles', userId), winner).catch((e) => console.warn('[sync] profile push failed:', e));
+  }
+};
+
+const syncStreak = async (userId: string): Promise<void> => {
+  const key = streakKey(userId);
+  const local = readLocal<StreakInfo | null>(key, null);
+  let remote: StreakInfo | null = null;
+
+  try {
+    const snap = await withTimeout(getDoc(doc(db, 'streaks', userId)), 8000);
+    if (snap.exists()) remote = snap.data() as StreakInfo;
+  } catch (e) {
+    console.warn('[sync] Firestore streak pull failed:', e);
+    return;
+  }
+
+  const { winner, pushLocal } = pickNewer(local, remote);
+  if (winner) writeLocal(key, winner);
+  if (pushLocal && winner) {
+    setDoc(doc(db, 'streaks', userId), winner).catch((e) => console.warn('[sync] streak push failed:', e));
+  }
+};
+
+/**
+ * Полная двунаправленная синхронизация пользователя с Firestore.
+ * Безопасно вызывать при входе, при возврате приложения на передний план и периодически.
+ */
+export const syncFromFirestore = async (userId: string): Promise<void> => {
+  if (!userId || userId === 'guest') return;
+  await Promise.allSettled([syncGraph(userId), syncProfile(userId), syncStreak(userId)]);
 };

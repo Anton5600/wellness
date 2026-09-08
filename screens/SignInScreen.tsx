@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { myTrackerService } from '../services/myTrackerService';
+import { friendlyAuthError } from '../services/authErrors';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 60 * 1000; // 1 minute
@@ -104,7 +105,7 @@ const SignInScreen: React.FC = () => {
       setFailedAttempts(0); // Reset on success
     } catch (error: any) {
       console.error("Email Auth Error:", error);
-      setError(error.message || 'Ошибка авторизации');
+      setError(friendlyAuthError(error));
       handleFailedAttempt();
       setLoading(false);
     }
@@ -128,7 +129,7 @@ const SignInScreen: React.FC = () => {
       setLoading(false);
     } catch (error: any) {
       console.error("Password Reset Error:", error);
-      setError(error.message || 'Ошибка при отправке письма');
+      setError(friendlyAuthError(error, 'Ошибка при отправке письма'));
       handleFailedAttempt();
       setLoading(false);
     }

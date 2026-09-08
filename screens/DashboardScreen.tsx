@@ -13,9 +13,11 @@ import DailyRitual from '../components/DailyRitual';
 import { FeatureLock } from '../components/FeatureLock';
 import { StreakDayScroller } from '../components/StreakDayScroller';
 import { DevBridgeTester } from '../components/DevBridgeTester';
+import { DevDateTraveller } from '../components/DevDateTraveller';
 import { useUnlockedFeatures, FEATURE_DAYS } from '../hooks/useUnlockedFeatures';
 import { compassService } from '../services/compassService';
 import { initNotificationListeners } from '../services/notificationService';
+import { SYNC_EVENT } from '../hooks/useFirestoreSync';
 
 const LOADING_PHRASES = [
   "Настраиваем нейронные связи на дзен...",
@@ -137,31 +139,44 @@ const DashboardScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    const fetchHistory = async () => {
-      setLoading(true);
+    compassService.setCurrentUserId(user?.uid);
+    let cancelled = false;
+
+    const fetchHistory = async (silent: boolean) => {
+      if (!silent) setLoading(true);
       try {
-        compassService.setCurrentUserId(user?.uid);
         const userHistory = await compassService.getHistory();
-        setHistory(userHistory);
+        if (!cancelled) setHistory(userHistory);
       } catch (error) {
         console.error("Failed to load history:", error);
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     };
-    fetchHistory();
-  }, [user]);
 
-  useEffect(() => {
-    compassService.setCurrentUserId(user?.uid);
-    let cancelled = false;
-    compassService.checkIsStuck().then((stuck) => {
-      if (!cancelled) setIsStuck(stuck);
-    });
-    compassService.getRecentEntries(1).then((entries) => {
-      if (!cancelled && entries[0]?.color) setDayColor(entries[0].color);
-    });
-    return () => { cancelled = true; };
+    const refreshStatus = () => {
+      compassService.checkIsStuck().then((stuck) => {
+        if (!cancelled) setIsStuck(stuck);
+      });
+      compassService.getRecentEntries(1).then((entries) => {
+        if (!cancelled && entries[0]?.color) setDayColor(entries[0].color);
+      });
+    };
+
+    void fetchHistory(false);
+    refreshStatus();
+
+    // После фоновой синхронизации с Firestore молча обновляем данные (без спиннера).
+    const onSync = () => {
+      void fetchHistory(true);
+      refreshStatus();
+    };
+    window.addEventListener(SYNC_EVENT, onSync);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(SYNC_EVENT, onSync);
+    };
   }, [user?.uid]);
 
   // Гейт «Утреннего моста»: если сегодняшнего ритуала ещё нет и мост сегодня не показан —
@@ -298,6 +313,9 @@ const DashboardScreen: React.FC = () => {
 
       {/* Dev-only: ползунок дня стрика для ручного прогона всех порогов разблокировок */}
       <StreakDayScroller />
+
+      {/* Dev-only: «машина времени» — сдвиг «сегодня» для прогона стрика по датам (временная) */}
+      <DevDateTraveller />
 
       {/* Dev-only: панель теста сценариев «Утреннего моста» (временная) */}
       <DevBridgeTester />

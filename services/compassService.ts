@@ -9,15 +9,17 @@ import {
   PulseEntry,
   PulseScenario,
   PracticeId,
+  MixedEmotion,
 } from '../types';
 import { findOilByName } from '../data/oilDatabase';
 import { PRACTICE_BY_ID } from '../data/practices';
 import { computeUnlockedFeatures, UNLOCK_DAYS } from './recommendation/unlock';
 import { breathingPatternFor } from './recommendation/breathing';
-import { colorForDominant } from './recommendation/color';
-import { inferEmotionState } from './recommendation/inference';
+import { colorForDominant, colorForDyad } from './recommendation/color';
+import { inferEmotionState, isEmotionKey } from './recommendation/inference';
+import { dyadFor } from './recommendation/dyads';
 import { classifyPulse, pulseGate } from './recommendation/pulse';
-import { selectPractice, bannedPracticeIds } from './recommendation/practice';
+import { selectPractice, bannedPracticeIds, preferredPracticeIds } from './recommendation/practice';
 import { computeStreakTransition, missedDays } from './recommendation/streak';
 import { EntryContext, YesterdayContext } from './recommendation/entry';
 import { getPracticeFeedbackEntries, getPartialSessionFor } from './practiceMemory';
@@ -50,6 +52,17 @@ import {
 import { detectCrisis, CrisisDetectedError } from './recommendation/safety';
 import { readDevStreakOverride } from './devStreakOverride';
 import { readDevEntryOverride, buildDevEntryContext } from './devBridgeOverride';
+import { readDevDateOverride } from './devDateOverride';
+
+/** Валидирует `dyad` из ответа сервера и приводит к каноническому виду (или undefined). */
+const parseDyad = (raw: unknown): MixedEmotion | undefined => {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as { emotions?: unknown };
+  if (!Array.isArray(r.emotions) || r.emotions.length !== 2) return undefined;
+  const [a, b] = r.emotions;
+  if (!isEmotionKey(a) || !isEmotionKey(b)) return undefined;
+  return dyadFor(a, b) ?? undefined;
+};
 
 const DEFAULT_PLUTCHIK: PlutchikVector = {
   joy: 0.5,
@@ -81,7 +94,9 @@ const defaultProfile = (): PlutchikProfile => ({
 const defaultStreak = (): StreakInfo => ({
   current: 1,
   longest: 1,
-  lastActiveDate: new Date().toISOString().split('T')[0],
+  // Пустая дата = «пользователь ещё ни разу не был активен». Так первый чек-ин
+  // корректно сохранит стартовый стрик (см. computeStreakTransition), а не зависнет на 1 дне.
+  lastActiveDate: '',
 });
 
 /**
@@ -125,7 +140,8 @@ export class CompassService {
   }
 
   public getTodayDateStr(): string {
-    return new Date().toISOString().split('T')[0];
+    // Dev-only «машина времени»: подмена «сегодня» для ручного прогона стрика по датам.
+    return readDevDateOverride() ?? new Date().toISOString().split('T')[0];
   }
 
   // --- Плутчик-профиль ---
@@ -227,6 +243,12 @@ export class CompassService {
 
   /** Вчерашняя дата `YYYY-MM-DD` в той же UTC-системе, что и getTodayDateStr. */
   public getYesterdayDateStr(): string {
+    const override = readDevDateOverride();
+    if (override) {
+      const d = new Date(`${override}T00:00:00.000Z`);
+      d.setUTCDate(d.getUTCDate() - 1);
+      return d.toISOString().split('T')[0];
+    }
     const d = new Date();
     d.setUTCDate(d.getUTCDate() - 1);
     return d.toISOString().split('T')[0];
@@ -240,14 +262,16 @@ export class CompassService {
     return 'evening';
   }
 
-  /** Детерминированная практика дня по доминанте + бан «не помогло». */
+  /** Детерминированная практика дня по доминанте + бан «не помогло» + приоритет «помогло». */
   private computePracticeId(dominant: EmotionKey): PracticeId {
     const feedback = getPracticeFeedbackEntries(this.currentUserId);
-    const banned = bannedPracticeIds(feedback, new Date());
+    const now = new Date();
+    const banned = bannedPracticeIds(feedback, now);
+    const preferred = preferredPracticeIds(feedback, now);
     // Применённый паттерн «вечером тяжелее» → для негативных эмоций предпочитаем
     // успокаивающую практику (низкая активация), а не «разогревающую» по умолчанию.
     const preferCalm = hasEveningHarderBias(this.currentUserId) && NEGATIVE_EMOTIONS.includes(dominant);
-    return selectPractice(dominant, preferCalm ? 'low' : undefined, banned);
+    return selectPractice(dominant, preferCalm ? 'low' : undefined, banned, preferred);
   }
 
   // --- Записи эмоционального графа ---
@@ -449,6 +473,7 @@ export class CompassService {
         if (data.result && typeof data.result === 'object') {
           const aroma = data.result.aroma || 'Бергамот';
           const dominant: EmotionKey = data.result.dominant || 'anticipation';
+          const dyad = parseDyad(data.result.dyad);
           const entry: EmotionalGraphEntry = {
             date: today,
             timestamp: Date.now(),
@@ -462,10 +487,13 @@ export class CompassService {
             insight: data.result.insight || 'Твой Компас показывает настрой на уверенный шаг вперёд.',
             breathingDone: false,
             breathingPattern: typeof data.result.breathing === 'string' ? data.result.breathing : breathingPatternFor(isStuck),
-            color: typeof data.result.color === 'string' ? data.result.color : colorForDominant(dominant),
+            color: typeof data.result.color === 'string'
+              ? data.result.color
+              : dyad ? colorForDyad(dyad) : colorForDominant(dominant),
             tomorrowTeaser: typeof data.result.tomorrowTeaser === 'string' ? data.result.tomorrowTeaser : undefined,
             stuckFlag: isStuck,
             practiceId: this.computePracticeId(dominant),
+            dyad,
           };
           return this.saveDailyEntry(entry);
         }
@@ -484,24 +512,22 @@ export class CompassService {
     isStuck: boolean,
     baseline: PlutchikVector
   ): EmotionalGraphEntry {
-    const inputLower = microInput.toLowerCase();
-    let dominant: EmotionKey = 'anticipation';
+    // Доминанта и вектор — из общего детерминированного матчера (без дублирования ключевиков).
+    const { vector, dominant, dyad } = inferEmotionState(microInput, baseline);
+
     let aroma = 'Бергамот';
     let aromaReason = 'Снимает внутреннее напряжение и помогает переключиться на вдохновляющее действие.';
     let insight = 'Ты держишь фокус на задачах, но тело просит мягкого замедления перед активным стартом.';
 
-    if (inputLower.includes('😔') || inputLower.includes('груст') || inputLower.includes('устал')) {
-      dominant = 'sadness';
+    if (dominant === 'sadness') {
       aroma = 'Лаванда';
       aromaReason = 'Мягко снижает уровень кортизола и возвращает чувство безопасности.';
       insight = 'Грусть или усталость — это сигнал о том, что твой ресурс на пределе. Дай себе 60 секунд тишины.';
-    } else if (inputLower.includes('😊') || inputLower.includes('радост') || inputLower.includes('отлич')) {
-      dominant = 'joy';
+    } else if (dominant === 'joy') {
       aroma = 'Дикий Апельсин';
       aromaReason = 'Усиливает жизненную энергию и закрепляет позитивный эмоциональный якорь.';
       insight = 'Отличный уровень энергии. Используй этот момент для создания устойчивого состояния на весь день.';
-    } else if (inputLower.includes('тревог') || inputLower.includes('страх') || inputLower.includes('волнен')) {
-      dominant = 'fear';
+    } else if (dominant === 'fear') {
       aroma = 'Ладан';
       aromaReason = 'Глубоко умиротворяет ум, замедляет дыхание и снимает поверхностную тревожность.';
       insight = 'Тревога — это неопределенность будущего. Дыхание возвращает тебя в единственную реальность — «Здесь и сейчас».';
@@ -513,17 +539,12 @@ export class CompassService {
       insight = 'Твой Компас заметил, что последние дни даются нелегко. Это не ошибка, а сигнал сбавить темп.';
     }
 
-    const inferred: PlutchikVector = {
-      ...baseline,
-      [dominant]: Math.min(1.0, (baseline[dominant] || 0.5) + 0.2),
-    };
-
     return {
       date: this.getTodayDateStr(),
       timestamp: Date.now(),
       microInput,
       inputType,
-      plutchikInferred: inferred,
+      plutchikInferred: vector,
       dominant,
       aroma,
       aromaId: findOilByName(aroma)?.id,
@@ -531,10 +552,11 @@ export class CompassService {
       insight,
       breathingDone: false,
       breathingPattern: breathingPatternFor(isStuck),
-      color: colorForDominant(dominant),
+      color: dyad ? colorForDyad(dyad) : colorForDominant(dominant),
       tomorrowTeaser: 'Завтра твой Компас снова подскажет, куда направить внимание.',
       stuckFlag: isStuck,
       practiceId: this.computePracticeId(dominant),
+      dyad,
     };
   }
 }

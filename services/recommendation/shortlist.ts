@@ -1,4 +1,4 @@
-import { PlutchikVector, OilEntry, EffectMode, EmotionKey } from '../../types';
+import { PlutchikVector, OilEntry, EffectMode, EmotionKey, MixedEmotion } from '../../types';
 import { OIL_DATABASE } from '../../data/oilDatabase';
 import { DEFAULT_CONFIG, RecommendationConfig } from './config';
 import { bannedOilIds, EveningFeedbackEntry } from './effectiveness';
@@ -15,9 +15,13 @@ const modeMatchesStrategy = (mode: EffectMode, strategy: EffectMode): boolean =>
   return strategy === 'balance' && mode === 'calm';
 };
 
-/** 1, если у масла есть эффект на доминирующую эмоцию; иначе 0. */
-const emotionMatch = (oil: OilEntry, dominant?: EmotionKey): number =>
-  dominant && oil.effects.some((eff) => eff.emotion === dominant) ? 1 : 0;
+/** Число целевых эмоций (доминанта, либо обе эмоции диады), на которые есть эффект у масла. */
+const emotionCoverage = (oil: OilEntry, targets: EmotionKey[]): number =>
+  targets.filter((t) => oil.effects.some((eff) => eff.emotion === t)).length;
+
+/** Целевые эмоции для ранжирования: при диаде — обе её эмоции, иначе — доминанта. */
+const coverageTargets = (dominant?: EmotionKey, dyad?: MixedEmotion): EmotionKey[] =>
+  dyad ? [dyad.emotions[0], dyad.emotions[1]] : dominant ? [dominant] : [];
 
 export interface CandidateShortlistInput {
   vector: PlutchikVector;
@@ -25,6 +29,8 @@ export interface CandidateShortlistInput {
   feedback: EveningFeedbackEntry[];
   /** Доминирующая эмоция — тибрекает ранжирование (если не задана, только по mode). */
   dominant?: EmotionKey;
+  /** Смешанная эмоция — ранжирует выше масла, закрывающие ОБЕ эмоции пары. */
+  dyad?: MixedEmotion;
   oilDb?: OilEntry[];
   cfg?: RecommendationConfig;
   /** Точка отсчёта для окна бана; в проде — текущий момент. */
@@ -45,14 +51,34 @@ export const candidateShortlist = ({
   hour,
   feedback,
   dominant,
+  dyad,
   oilDb = OIL_DATABASE,
   cfg = DEFAULT_CONFIG,
   now,
   eveningHarder = false,
 }: CandidateShortlistInput): OilEntry[] => {
   const banned = bannedOilIds(feedback, now ?? new Date(), cfg);
-  const strategy = strategyFor(classifyShape(vector, cfg));
   const chrono = chronotypeForHour(hour);
+
+  // Диада (смешанная эмоция): шорт-лист — масла, у которых диада подобрана явно (поле `dyads`).
+  // Прямая привязка надёжнее подбора по `effects`: стратегия формы колеса для вектора диады
+  // часто даёт «support» и отсеивает «awaken»-масла (Лайм, Имбирь, Мотивация), не попадающие
+  // под неё. Хронотип здесь — мягкий сигнал (масла под текущее время суток выше), а не фильтр:
+  // курированные пользователем масла диады не роняем (хронотип — инференция из описаний).
+  if (dyad) {
+    const forDyad = oilDb.filter((oil) => !banned.has(oil.id) && oil.dyads?.includes(dyad.key));
+    if (forDyad.length > 0) {
+      return forDyad.sort((a, b) => {
+        const aIn = a.chronotype.includes(chrono) ? 1 : 0;
+        const bIn = b.chronotype.includes(chrono) ? 1 : 0;
+        if (aIn !== bIn) return bIn - aIn; // под текущее время суток — выше
+        return (a.dyads?.length ?? 0) - (b.dyads?.length ?? 0); // затем — самые «узкие» (одна диада)
+      });
+    }
+  }
+
+  const strategy = strategyFor(classifyShape(vector, cfg));
+  const targets = coverageTargets(dominant, dyad);
 
   const ranked = oilDb
     .filter((oil) => !banned.has(oil.id))
@@ -64,23 +90,23 @@ export const candidateShortlist = ({
       matches: oil.effects.filter(
         (eff) => modeMatchesStrategy(eff.mode, strategy) || (eveningHarder && eff.mode === 'calm')
       ).length,
-      emotion: emotionMatch(oil, dominant),
+      coverage: emotionCoverage(oil, targets),
     }))
     .filter((c) => c.matches > 0)
-    .sort((a, b) => b.matches - a.matches || b.emotion - a.emotion);
+    .sort((a, b) => b.matches - a.matches || b.coverage - a.coverage);
 
   if (ranked.length > 0) return ranked.map((c) => c.oil);
 
-  // Фолбэк 1: любое масло под хронотип (вне бана), предпочитая нацеленные на доминанту.
+  // Фолбэк 1: любое масло под хронотип (вне бана), предпочитая нацеленные на целевые эмоции.
   const byChrono = oilDb
     .filter((oil) => !banned.has(oil.id) && oil.chronotype.includes(chrono))
-    .sort((a, b) => emotionMatch(b, dominant) - emotionMatch(a, dominant));
+    .sort((a, b) => emotionCoverage(b, targets) - emotionCoverage(a, targets));
   if (byChrono.length > 0) return byChrono;
 
   // Фолбэк 2: любое масло вне бана (любой хронотип).
   const notBanned = oilDb
     .filter((oil) => !banned.has(oil.id))
-    .sort((a, b) => emotionMatch(b, dominant) - emotionMatch(a, dominant));
+    .sort((a, b) => emotionCoverage(b, targets) - emotionCoverage(a, targets));
   if (notBanned.length > 0) return notBanned;
 
   // Фолбэк 3: всё забанили — вернуть всё, чтобы рекомендация не была пустой.

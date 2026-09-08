@@ -26,6 +26,12 @@ export const daysBetween = (a: string, b: string): number => {
  * Всегда longest = max(longest, current), lastActiveDate = today.
  */
 export const computeStreakTransition = (prev: StreakInfo, today: string): StreakInfo => {
+  // Первый чек-ин: якорной даты ещё нет (`lastActiveDate` пустая) — стартуем сегодня.
+  // Важно вернуть `lastActiveDate: today`, чтобы вызывающий сервис сохранил стрик.
+  if (!prev.lastActiveDate) {
+    return { current: 1, longest: Math.max(prev.longest, 1), lastActiveDate: today };
+  }
+
   const gap = daysBetween(prev.lastActiveDate, today);
 
   let current = prev.current;

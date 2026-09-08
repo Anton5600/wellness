@@ -41,19 +41,28 @@ const PRACTICE_MATRIX: Record<EmotionKey, Record<Arousal, readonly PracticeId[]>
   anticipation: { high: ['pmr', 'fingerTracing'], low: ['fingerTracing', 'pmr'] },
 };
 
-/** Выбор практики: пропускает забаненные; фолбэк — первая из списка (как в shortlist.ts). */
+/** Выбор практики: пропускает забаненные, предпочитает «помогло»; фолбэк — первая из списка. */
 export const selectPractice = (
   dominant: EmotionKey,
   arousal?: Arousal,
-  banned?: ReadonlySet<PracticeId>
+  banned?: ReadonlySet<PracticeId>,
+  preferred?: ReadonlySet<PracticeId>
 ): PracticeId => {
   const band = arousal ?? inferArousal(dominant);
   const candidates = PRACTICE_MATRIX[dominant]?.[band] ?? ['bodyScan'];
-  if (banned && banned.size > 0) {
-    const ok = candidates.find((id) => !banned.has(id));
-    if (ok) return ok;
+
+  // Сначала отсекаем забаненные; если в бане всё — фолбэк на первый из списка.
+  const available = banned && banned.size > 0
+    ? candidates.filter((id) => !banned.has(id))
+    : candidates;
+  if (available.length === 0) return candidates[0];
+
+  // Мягкий приоритет: среди доступных (когда есть альтернативы) предпочитаем «помогло».
+  if (preferred && preferred.size > 0 && available.length > 1) {
+    const boosted = available.find((id) => preferred.has(id));
+    if (boosted) return boosted;
   }
-  return candidates[0];
+  return available[0];
 };
 
 export interface PracticeBanInput {
@@ -74,4 +83,18 @@ export const bannedPracticeIds = (
     if (e.feedback === 'not_helped' && e.timestamp >= cutoff) banned.add(e.practiceId);
   }
   return banned;
+};
+
+/** Зеркало бана: «помогло» в окне `banDays` дней → практика получает мягкий приоритет. */
+export const preferredPracticeIds = (
+  feedback: PracticeBanInput[],
+  now: Date,
+  cfg: RecommendationConfig = DEFAULT_CONFIG
+): Set<PracticeId> => {
+  const cutoff = now.getTime() - cfg.banDays * 24 * 60 * 60 * 1000;
+  const preferred = new Set<PracticeId>();
+  for (const e of feedback) {
+    if (e.feedback === 'helped' && e.timestamp >= cutoff) preferred.add(e.practiceId);
+  }
+  return preferred;
 };

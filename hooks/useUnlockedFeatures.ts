@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { compassService } from '../services/compassService';
 import { UnlockedFeatures, StreakInfo } from '../types';
+import { SYNC_EVENT } from './useFirestoreSync';
 
 /**
  * Загружает флаги разблокировки фич и текущий streak для активного пользователя.
  * Вызывает compassService.setCurrentUserId, чтобы операции шли в нужный контур.
+ * Перечитывает данные после фоновой синхронизации с Firestore (событие `compass:sync`),
+ * чтобы показатели (стрик/разблокировки) оставались актуальными на разных устройствах.
  */
 export const useUnlockedFeatures = () => {
   const { user } = useAuth();
@@ -15,7 +18,8 @@ export const useUnlockedFeatures = () => {
   useEffect(() => {
     compassService.setCurrentUserId(user?.uid);
     let cancelled = false;
-    (async () => {
+
+    const load = async () => {
       const [f, s] = await Promise.all([
         compassService.getUnlockedFeatures(),
         compassService.getStreak(),
@@ -23,8 +27,18 @@ export const useUnlockedFeatures = () => {
       if (cancelled) return;
       setFeatures(f);
       setStreak(s);
-    })();
-    return () => { cancelled = true; };
+    };
+
+    void load();
+
+    // Молчаливое обновление после синхронизации (без спиннера загрузки).
+    const onSync = () => { void load(); };
+    window.addEventListener(SYNC_EVENT, onSync);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(SYNC_EVENT, onSync);
+    };
   }, [user?.uid]);
 
   return { features, streak };

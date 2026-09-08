@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
+import { friendlyAuthError } from '../services/authErrors';
 
 const VerifyEmailScreen: React.FC = () => {
   const { user, reloadUser, signOut } = useAuth();
@@ -23,7 +24,7 @@ const VerifyEmailScreen: React.FC = () => {
         setTimeout(() => navigate('/'), 1000);
       }
     } catch (err: any) {
-      setError(err.message || 'Ошибка проверки статуса');
+      setError(friendlyAuthError(err, 'Ошибка проверки статуса'));
     }
     setLoading(false);
   };
@@ -41,7 +42,7 @@ const VerifyEmailScreen: React.FC = () => {
       if (err.code === 'auth/too-many-requests') {
         setError('Слишком много попыток. Пожалуйста, подождите немного перед повторной отправкой.');
       } else {
-        setError(err.message || 'Ошибка при отправке письма');
+        setError(friendlyAuthError(err, 'Ошибка при отправке письма'));
       }
     }
     setLoading(false);

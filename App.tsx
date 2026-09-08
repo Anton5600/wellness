@@ -34,6 +34,7 @@ import LegalScreen from './screens/LegalScreen';
 import { myTrackerService } from './services/myTrackerService';
 import { compassService } from './services/compassService';
 import { hasPlutchikProfile } from './services/firestoreService';
+import { useFirestoreSync } from './hooks/useFirestoreSync';
 
 const BackButtonHandler: React.FC = () => {
   const navigate = useNavigate();
@@ -154,6 +155,9 @@ const RequireOnboarding: React.FC = () => {
 const AppRoutes: React.FC = () => {
   const { user, loading } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
+
+  // Фоновая синхронизация профиля с Firestore (вход / возврат в приложение / периодически).
+  useFirestoreSync();
 
   useEffect(() => {
     if (user && !loading) {

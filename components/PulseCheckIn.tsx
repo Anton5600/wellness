@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EmotionalGraphEntry, PracticeId, PulseEntry, PulseScenario, PracticeFeedback } from '../types';
 import { compassService } from '../services/compassService';
-import { selectPractice, bannedPracticeIds, inferArousal } from '../services/recommendation/practice';
+import { selectPractice, bannedPracticeIds, preferredPracticeIds, inferArousal } from '../services/recommendation/practice';
 import { pulseGate, PULSE_CONFIG } from '../services/recommendation/pulse';
 import { EMOTION_LABELS } from '../services/recommendation/inference';
+import { NEGATIVE_EMOTIONS } from '../services/recommendation/pattern';
 import { PRACTICE_BY_ID } from '../data/practices';
 import {
   getPracticeFeedbackEntries,
@@ -68,6 +69,7 @@ export const PulseCheckIn: React.FC<PulseCheckInProps> = ({
   const todayDate = entry.date;
 
   const dominantLabel = result ? EMOTION_LABELS[result.pulse.dominant] : '';
+  const isNegativePulse = result ? NEGATIVE_EMOTIONS.includes(result.pulse.dominant) : false;
   const emergencyPractice = result ? PRACTICE_BY_ID[result.practiceId] : null;
 
   const handleOpen = () => {
@@ -106,10 +108,13 @@ export const PulseCheckIn: React.FC<PulseCheckInProps> = ({
         );
         return;
       }
+      const feedback = getPracticeFeedbackEntries(uid);
+      const now = new Date();
       const practiceId = selectPractice(
         res.pulse.dominant,
         undefined,
-        bannedPracticeIds(getPracticeFeedbackEntries(uid), new Date())
+        bannedPracticeIds(feedback, now),
+        preferredPracticeIds(feedback, now)
       );
       setResult({ pulse: res.pulse, scenario: res.scenario, practiceId });
       setFeedback(null);
@@ -254,7 +259,9 @@ export const PulseCheckIn: React.FC<PulseCheckInProps> = ({
       {result?.scenario === 'stable' ? (
         <>
           <p className="text-sm text-forest/80 dark:text-gray-300 leading-relaxed">
-            {dominantLabel} немного фонит, но ты справляешься. Утренняя практика всё ещё твой якорь.
+            {isNegativePulse
+              ? `${dominantLabel} немного фонит, но ты справляешься. Утренняя практика всё ещё твой якорь.`
+              : `${dominantLabel} — и это здорово. Держись за это состояние, утренняя практика поможет его закрепить.`}
           </p>
           <div className="mt-4 space-y-2">
             {morningPracticeId && (
