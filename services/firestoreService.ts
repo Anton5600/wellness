@@ -1,6 +1,6 @@
 
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { db, auth } from '../firebaseConfig';
 import { EmotionHistoryEntry, EmotionKey, UserOil, OilCatalogItem, EmotionalGraphEntry, PlutchikProfile, StreakInfo, EveningFeedback, PulseEntry } from '../types';
 import { OILS_CATALOG } from '../data/oils';
 import { mergeGraphByFreshness, pickNewer } from './syncMerge';
@@ -12,6 +12,21 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs = 1500): Promise<T> => {
       setTimeout(() => reject(new Error('Firestore request timeout')), timeoutMs)
     )
   ]);
+};
+
+/**
+ * Дожидается готовности ID-токена Firebase Auth перед первым чтением Firestore.
+ * Сразу после входа (`onAuthStateChanged` уже сработал) Firestore-клиент может ещё не иметь
+ * актуального токена — тогда `getDoc` падает с «permission denied» и гейт онбординга ложно
+ * считает вернувшегося пользователя новым. Явный `getIdToken()` «прогревает» токен.
+ */
+const waitForAuthToken = async (): Promise<void> => {
+  try {
+    const user = auth.currentUser;
+    if (user) await withTimeout(user.getIdToken(), 5000);
+  } catch {
+    /* ignore: если чтение всё равно не авторизовано, Firestore вернёт реальную ошибку */
+  }
 };
 
 export const getOilsCatalog = async (): Promise<OilCatalogItem[]> => {
@@ -359,7 +374,11 @@ export const getPlutchikProfile = async (userId: string, fallback: PlutchikProfi
 
   if (userId && userId !== 'guest') {
     try {
-      const snap = await withTimeout(getDoc(doc(db, 'plutchikProfiles', userId)), 1500);
+      // 8s как у синхронизации: первый запрос после установки включает получение токена и
+      // на холодном старте может не уложиться в 1.5s. Иначе вернём дефолтный профиль
+      // (trust/anticipation выше, чем в реальном baseline) — «расхождение» профилей на экране.
+      await waitForAuthToken();
+      const snap = await withTimeout(getDoc(doc(db, 'plutchikProfiles', userId)), 8000);
       if (snap.exists()) {
         const profile = snap.data() as PlutchikProfile;
         writeLocal(profileKey(userId), profile);
@@ -383,23 +402,43 @@ export const savePlutchikProfile = async (userId: string, profile: PlutchikProfi
 };
 
 /**
- * Признак завершённого онбординга: сохранён ли базовый профиль Плутчика.
- * Проверяем локальный кеш, затем Firestore. `true` — профиль есть (онбординг пройден).
+ * Результат проверки профиля. `unknown` — прочитать не удалось (таймаут, отказ правил,
+ * нет токена): это НЕ то же самое, что «профиля нет», и вызывающий код вправе повторить.
  */
-export const hasPlutchikProfile = async (userId: string): Promise<boolean> => {
+export type PlutchikProfileCheck = 'present' | 'absent' | 'unknown';
+
+/**
+ * Трёхзначная проверка профиля Плутчика: локальный кеш, затем `plutchikProfiles/{uid}`.
+ * Разделение `absent` и `unknown` важно для гейтов онбординга: ретраить имеет смысл только
+ * неудачное чтение. Ретрай на достоверном `absent` заставляет нового пользователя ждать
+ * впустую (профиль у него появится только после прохождения квиза).
+ */
+export const checkPlutchikProfile = async (userId: string): Promise<PlutchikProfileCheck> => {
   const local = readLocal<PlutchikProfile | null>(profileKey(userId), null);
-  if (local) return true;
+  if (local) return 'present';
 
   if (userId && userId !== 'guest') {
     try {
-      const snap = await withTimeout(getDoc(doc(db, 'plutchikProfiles', userId)), 1500);
-      return snap.exists();
+      // 8s как у синхронизации: первый запрос после установки включает получение токена
+      // и на холодном старте может не уложиться в 1.5s, ложно считая онбординг не пройденным.
+      await waitForAuthToken();
+      const snap = await withTimeout(getDoc(doc(db, 'plutchikProfiles', userId)), 8000);
+      return snap.exists() ? 'present' : 'absent';
     } catch (e) {
       console.warn('Firestore profile check failed:', e);
+      return 'unknown';
     }
   }
-  return false;
+  return 'absent';
 };
+
+/**
+ * Признак завершённого онбординга: сохранён ли базовый профиль Плутчика.
+ * `true` — профиль есть. Неудачное чтение тоже даёт `false`; если нужно отличить его от
+ * «профиля точно нет», используйте `checkPlutchikProfile`.
+ */
+export const hasPlutchikProfile = async (userId: string): Promise<boolean> =>
+  (await checkPlutchikProfile(userId)) === 'present';
 
 // --- streaks ---
 
@@ -516,5 +555,8 @@ const syncStreak = async (userId: string): Promise<void> => {
  */
 export const syncFromFirestore = async (userId: string): Promise<void> => {
   if (!userId || userId === 'guest') return;
+  // Первичная синхронизация сразу после входа может гоняться с получением ID-токена:
+  // дожидаемся его, чтобы профиль подтянулся и записался в localStorage с первой попытки.
+  await waitForAuthToken();
   await Promise.allSettled([syncGraph(userId), syncProfile(userId), syncStreak(userId)]);
 };

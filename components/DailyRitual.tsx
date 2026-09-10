@@ -5,6 +5,7 @@ import { PlutchikWheel } from './PlutchikWheel';
 import { useAuth } from '../context/AuthContext';
 import { compassService } from '../services/compassService';
 import { getUserOils } from '../services/firestoreService';
+import { SYNC_EVENT } from '../hooks/useFirestoreSync';
 import { findOilById } from '../data/oilDatabase';
 import { PRACTICE_BY_ID } from '../data/practices';
 import { selectPractice, bannedPracticeIds, preferredPracticeIds } from '../services/recommendation/practice';
@@ -112,6 +113,20 @@ export const DailyRitual: React.FC = () => {
       }
     })();
     return () => { cancelled = true; };
+  }, [user?.uid]);
+
+  // После фоновой синхронизации с Firestore профиль Плутчика мог подтянуться (в т.ч. на
+  // холодном старте, когда первый read вернул дефолтный фолбэк). Обновляем колесо без спиннера.
+  useEffect(() => {
+    if (!user?.uid) return;
+    const reload = () => {
+      compassService.setCurrentUserId(user.uid);
+      compassService.getProfile()
+        .then((prof) => setProfile(prof))
+        .catch(() => {});
+    };
+    window.addEventListener(SYNC_EVENT, reload);
+    return () => window.removeEventListener(SYNC_EVENT, reload);
   }, [user?.uid]);
 
   // Аптечка пользователя — для сценария «Нет под рукой» (подмена на клиенте).

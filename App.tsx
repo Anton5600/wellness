@@ -33,8 +33,8 @@ import SymbolsDictionaryScreen from './screens/SymbolsDictionaryScreen';
 import LegalScreen from './screens/LegalScreen';
 import { myTrackerService } from './services/myTrackerService';
 import { compassService } from './services/compassService';
-import { hasPlutchikProfile } from './services/firestoreService';
-import { useFirestoreSync } from './hooks/useFirestoreSync';
+import { checkPlutchikProfile } from './services/firestoreService';
+import { useFirestoreSync, SYNC_EVENT } from './hooks/useFirestoreSync';
 
 const BackButtonHandler: React.FC = () => {
   const navigate = useNavigate();
@@ -115,40 +115,93 @@ const App: React.FC = () => {
   );
 };
 
+const GateSpinner: React.FC = () => (
+  <div className="flex min-h-[100dvh] items-center justify-center bg-background-light dark:bg-background-dark">
+    <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+  </div>
+);
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const MAX_PROFILE_ATTEMPTS = 3;
+
+/**
+ * Состояние профиля Плутчика для гейтов онбординга. `no-user` — ещё не авторизован
+ * (гейты тогда просто пропускают детей, как и раньше).
+ *
+ * Ретраи здесь только на `unknown` — неудачное чтение (таймаут, отказ правил, нет токена).
+ * Достоверный `absent` означает нового пользователя, и ждать ему нечего: достоверность
+ * обеспечивает `waitForAuthToken()` внутри `checkPlutchikProfile`. Ретрай на `absent` давал
+ * новичку ~12s спиннера (2s+4s в прямом гейте, затем столько же в обратном).
+ *
+ * На `SYNC_EVENT` проверка повторяется: фоновая синхронизация могла подтянуть профиль из
+ * Firestore на свежей установке, где локальный кеш пуст.
+ */
+const usePlutchikProfileGate = (): 'checking' | 'present' | 'absent' | 'no-user' => {
+  const { user } = useAuth();
+  const [state, setState] = useState<'checking' | 'present' | 'absent' | 'no-user'>('checking');
+
+  useEffect(() => {
+    if (!user) {
+      setState('no-user');
+      return;
+    }
+    let active = true;
+    let running = false;
+
+    const check = async () => {
+      if (running) return;
+      running = true;
+      try {
+        compassService.setCurrentUserId(user.uid);
+        for (let attempt = 0; attempt < MAX_PROFILE_ATTEMPTS; attempt += 1) {
+          const result = await checkPlutchikProfile(user.uid);
+          if (!active) return;
+          if (result === 'present') return setState('present');
+          if (result === 'absent') return setState('absent');
+          await sleep((attempt + 1) * 1000); // 'unknown' — чтение не удалось, пробуем ещё
+          if (!active) return;
+        }
+        setState('absent');
+      } finally {
+        running = false;
+      }
+    };
+
+    check();
+    window.addEventListener(SYNC_EVENT, check);
+
+    return () => {
+      active = false;
+      window.removeEventListener(SYNC_EVENT, check);
+    };
+  }, [user]);
+
+  return state;
+};
+
 /**
  * Гейт онбординга нового пользователя. Пока базовый профиль Плутчика не сохранён,
  * любой защищённый экран перенаправляется на настройку ритуалов. Проверка по
  * локальному кешу, затем по Firestore (`plutchikProfiles/{uid}`).
  */
 const RequireOnboarding: React.FC = () => {
-  const { user } = useAuth();
-  const [status, setStatus] = useState<'checking' | 'done' | 'needed'>('checking');
+  const state = usePlutchikProfileGate();
 
-  useEffect(() => {
-    let active = true;
-    if (!user) {
-      setStatus('done');
-      return;
-    }
-    compassService.setCurrentUserId(user.uid);
-    hasPlutchikProfile(user.uid).then((has) => {
-      if (active) setStatus(has ? 'done' : 'needed');
-    });
-    return () => {
-      active = false;
-    };
-  }, [user]);
+  if (state === 'checking') return <GateSpinner />;
+  if (state === 'absent') return <Navigate to="/rituals" replace />;
+  return <Outlet />;
+};
 
-  if (status === 'checking') {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-background-light dark:bg-background-dark">
-        <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-  if (status === 'needed') {
-    return <Navigate to="/rituals" replace />;
-  }
+/**
+ * Обратный гейт: если профиль Плутчика уже есть (пользователь вернулся после переустановки
+ * или с другого устройства), экраны онбординга не показываем — сразу на дашборд.
+ */
+const RequireNoOnboarding: React.FC = () => {
+  const state = usePlutchikProfileGate();
+
+  if (state === 'checking') return <GateSpinner />;
+  if (state === 'present') return <Navigate to="/" replace />;
   return <Outlet />;
 };
 
@@ -217,10 +270,13 @@ const AppRoutes: React.FC = () => {
         <Route path="/legal/:documentType" element={<LegalScreen />} />
         {user ? (
           <>
-            {/* Онбординг нового пользователя: ритуалы → квиз Плутчика → результат */}
-            <Route path="/rituals" element={<RitualSetupScreen />} />
-            <Route path="/quiz" element={<QuizQuestionScreen />} />
-            <Route path="/onboarding-result" element={<OnboardingResultScreen />} />
+            {/* Онбординг нового пользователя: ритуалы → квиз Плутчика → результат.
+                Обёрнут в RequireNoOnboarding: если профиль уже есть — сразу на дашборд. */}
+            <Route element={<RequireNoOnboarding />}>
+              <Route path="/rituals" element={<RitualSetupScreen />} />
+              <Route path="/quiz" element={<QuizQuestionScreen />} />
+              <Route path="/onboarding-result" element={<OnboardingResultScreen />} />
+            </Route>
             <Route path="/verify-email" element={<VerifyEmailScreen />} />
 
             {/* Основное приложение (доступно после онбординга) */}
