@@ -499,6 +499,9 @@ export class CompassService {
         }
       }
     } catch (e) {
+      // «Красную зону» не глушим: серверный перехват кризиса обязан дойти до UI
+      // (иначе кризисное высказывание получило бы обычную рекомендацию по маслам).
+      if (e instanceof CrisisDetectedError) throw e;
       console.warn('[CompassService] Server synthesis fallback triggered', e);
     }
 

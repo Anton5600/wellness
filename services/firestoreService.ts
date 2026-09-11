@@ -29,6 +29,44 @@ const waitForAuthToken = async (): Promise<void> => {
   }
 };
 
+/**
+ * Вырезает `undefined` из полезной нагрузки рекурсивно (объекты и массивы).
+ *
+ * Firestore не принимает `undefined`: `setDoc`/`updateDoc` бросают на этом СИНХРОННО
+ * («Unsupported field value: undefined»), и бросок не ловится парой `.catch()` — он улетает
+ * в вызывающий сценарий. Опциональные поля записи (`dyad`, `tomorrowTeaser`,
+ * `eveningFeedback`) поэтому вычищаем здесь, а не полагаемся на каждого вызывающего.
+ * Не-объекты (числа, строки, `Date`, Firestore Timestamp) возвращаются как есть; в массивах
+ * `undefined` заменяется на `null`, чтобы не сдвигать индексы.
+ */
+export const stripUndefined = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value.map((v) => (v === undefined ? null : stripUndefined(v))) as unknown as T;
+  }
+  if (value && typeof value === 'object' && value.constructor === Object) {
+    const out: Record<string, unknown> = {};
+    for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v === undefined) continue;
+      out[key] = stripUndefined(v);
+    }
+    return out as T;
+  }
+  return value;
+};
+
+/**
+ * Фоновая запись: локальный кеш уже обновлён, поэтому сбой отправки не должен ронять
+ * пользовательский сценарий. Гасим оба пути отказа — отказ промиса и синхронный бросок SDK
+ * (невалидные данные или путь), который `Promise.catch` не перехватывает.
+ */
+const writeInBackground = (label: string, op: () => Promise<unknown>): void => {
+  try {
+    op().catch((e) => console.warn(label, e));
+  } catch (e) {
+    console.warn(label, e);
+  }
+};
+
 export const getOilsCatalog = async (): Promise<OilCatalogItem[]> => {
   try {
     const q = query(collection(db, 'oils'));
@@ -279,8 +317,9 @@ export const saveEmotionalGraphEntry = async (userId: string, entry: EmotionalGr
   writeLocal(graphKey(userId), graph);
 
   if (userId && userId !== 'guest') {
-    setDoc(doc(db, 'emotionalGraph', `${userId}_${stamped.date}`), { userId, ...stamped })
-      .catch((e) => console.warn('Firestore graph save failed (saved locally):', e));
+    writeInBackground('Firestore graph save failed (saved locally):', () =>
+      setDoc(doc(db, 'emotionalGraph', `${userId}_${stamped.date}`), stripUndefined({ userId, ...stamped }))
+    );
   }
   return stamped;
 };
@@ -343,8 +382,9 @@ export const saveEmotionalGraphPulse = async (userId: string, date: string, puls
   writeLocal(graphKey(userId), graph);
 
   if (userId && userId !== 'guest') {
-    updateDoc(doc(db, 'emotionalGraph', `${userId}_${date}`), { pulses: entry.pulses, updatedAt: entry.updatedAt })
-      .catch((e) => console.warn('Firestore pulse save failed:', e));
+    writeInBackground('Firestore pulse save failed:', () =>
+      updateDoc(doc(db, 'emotionalGraph', `${userId}_${date}`), stripUndefined({ pulses: entry.pulses, updatedAt: entry.updatedAt }))
+    );
   }
   return entry;
 };
@@ -360,8 +400,9 @@ export const saveEveningFeedbackFirestore = async (userId: string, date: string,
   writeLocal(graphKey(userId), graph);
 
   if (userId && userId !== 'guest') {
-    updateDoc(doc(db, 'emotionalGraph', `${userId}_${date}`), { eveningFeedback: feedback, updatedAt: entry.updatedAt })
-      .catch((e) => console.warn('Firestore feedback save failed:', e));
+    writeInBackground('Firestore feedback save failed:', () =>
+      updateDoc(doc(db, 'emotionalGraph', `${userId}_${date}`), stripUndefined({ eveningFeedback: feedback, updatedAt: entry.updatedAt }))
+    );
   }
   return entry;
 };
@@ -395,8 +436,9 @@ export const savePlutchikProfile = async (userId: string, profile: PlutchikProfi
   const stamped: PlutchikProfile = { ...profile, updatedAt: Date.now() };
   writeLocal(profileKey(userId), stamped);
   if (userId && userId !== 'guest') {
-    setDoc(doc(db, 'plutchikProfiles', userId), stamped)
-      .catch((e) => console.warn('Firestore profile save failed:', e));
+    writeInBackground('Firestore profile save failed:', () =>
+      setDoc(doc(db, 'plutchikProfiles', userId), stripUndefined(stamped))
+    );
   }
   return stamped;
 };
@@ -465,8 +507,9 @@ export const saveStreakInfo = async (userId: string, streak: StreakInfo): Promis
   const stamped: StreakInfo = { ...streak, updatedAt: Date.now() };
   writeLocal(streakKey(userId), stamped);
   if (userId && userId !== 'guest') {
-    setDoc(doc(db, 'streaks', userId), stamped)
-      .catch((e) => console.warn('Firestore streak save failed:', e));
+    writeInBackground('Firestore streak save failed:', () =>
+      setDoc(doc(db, 'streaks', userId), stripUndefined(stamped))
+    );
   }
   return stamped;
 };
@@ -504,8 +547,9 @@ const syncGraph = async (userId: string): Promise<void> => {
 
   // Отправляем локально-новые записи (офлайн-восстановление / первая миграция).
   for (const entry of localNewer) {
-    setDoc(doc(db, 'emotionalGraph', `${userId}_${entry.date}`), { userId, ...entry })
-      .catch((e) => console.warn('[sync] graph push failed:', e));
+    writeInBackground('[sync] graph push failed:', () =>
+      setDoc(doc(db, 'emotionalGraph', `${userId}_${entry.date}`), stripUndefined({ userId, ...entry }))
+    );
   }
 };
 
@@ -525,7 +569,9 @@ const syncProfile = async (userId: string): Promise<void> => {
   const { winner, pushLocal } = pickNewer(local, remote);
   if (winner) writeLocal(key, winner);
   if (pushLocal && winner) {
-    setDoc(doc(db, 'plutchikProfiles', userId), winner).catch((e) => console.warn('[sync] profile push failed:', e));
+    writeInBackground('[sync] profile push failed:', () =>
+      setDoc(doc(db, 'plutchikProfiles', userId), stripUndefined(winner))
+    );
   }
 };
 
@@ -545,7 +591,9 @@ const syncStreak = async (userId: string): Promise<void> => {
   const { winner, pushLocal } = pickNewer(local, remote);
   if (winner) writeLocal(key, winner);
   if (pushLocal && winner) {
-    setDoc(doc(db, 'streaks', userId), winner).catch((e) => console.warn('[sync] streak push failed:', e));
+    writeInBackground('[sync] streak push failed:', () =>
+      setDoc(doc(db, 'streaks', userId), stripUndefined(winner))
+    );
   }
 };
 
