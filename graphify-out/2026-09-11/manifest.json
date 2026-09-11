@@ -330,15 +330,15 @@
     "semantic_hash": ""
   },
   "services/compassService.ts": {
-    "mtime": 1789102441.207145,
-    "seen": 1789102596.970275,
-    "ast_hash": "e0607412da0741e3ffb2b377d2527516",
+    "mtime": 1788808535.2279239,
+    "seen": 1789066097.450612,
+    "ast_hash": "8901baf54f9c4abc2d36b3c15bb4b098",
     "semantic_hash": ""
   },
   "services/firestoreService.ts": {
-    "mtime": 1789102434.6914835,
-    "seen": 1789102596.9702835,
-    "ast_hash": "51a147065e36984f5596b3b705bac23e",
+    "mtime": 1789065973.7504778,
+    "seen": 1789066097.450615,
+    "ast_hash": "5daa27a1e3510ad7e66fdd4d429a0257",
     "semantic_hash": ""
   },
   "services/myTrackerService.ts": {
@@ -869,6 +869,54 @@
     "ast_hash": "8c0e8a7e63cbbcc4a6cb2de0178580be",
     "semantic_hash": ""
   },
+  "diag_auth.mjs": {
+    "mtime": 1788941612.657477,
+    "seen": 1789066097.4505677,
+    "ast_hash": "325fca1e5660e929c2f77a738a083057",
+    "semantic_hash": ""
+  },
+  "diag_check.mjs": {
+    "mtime": 1788938585.9183736,
+    "seen": 1789066097.4505682,
+    "ast_hash": "81dbebfbab3f1ea305d48a0e31c3d8d8",
+    "semantic_hash": ""
+  },
+  "diag_graph_full.mjs": {
+    "mtime": 1789044928.0922449,
+    "seen": 1789066097.450569,
+    "ast_hash": "233b87d26fbe817dbbfe714deccb1541",
+    "semantic_hash": ""
+  },
+  "diag_lastsignin.mjs": {
+    "mtime": 1788943038.4694552,
+    "seen": 1789066097.4505696,
+    "ast_hash": "f58256c9daaae71be2dc6063a41e6bc2",
+    "semantic_hash": ""
+  },
+  "diag_now.mjs": {
+    "mtime": 1789035654.8135266,
+    "seen": 1789066097.4505706,
+    "ast_hash": "b4015a28229f4d5c388c89ce59664194",
+    "semantic_hash": ""
+  },
+  "diag_profile_full.mjs": {
+    "mtime": 1789044606.7665086,
+    "seen": 1789066097.4505713,
+    "ast_hash": "9865f228e9e64a19bfb834f2f9fd6937",
+    "semantic_hash": ""
+  },
+  "diag_readrules.mjs": {
+    "mtime": 1789044852.4338012,
+    "seen": 1789066097.450572,
+    "ast_hash": "408fedc6479bb2d7aff615356d5940cd",
+    "semantic_hash": ""
+  },
+  "diag_users.mjs": {
+    "mtime": 1788941480.2741177,
+    "seen": 1789066097.450573,
+    "ast_hash": "0e119c44402c4c311f3013217fcd9527",
+    "semantic_hash": ""
+  },
   "firebase.json": {
     "mtime": 1788936694.5882719,
     "seen": 1789066097.4505749,
@@ -1083,12 +1131,6 @@
     "mtime": 1788808311.420632,
     "seen": 1789066097.450686,
     "ast_hash": "e9901cc44dabfd30718371b4a45785fb",
-    "semantic_hash": ""
-  },
-  "test/firestoreWrite.test.ts": {
-    "mtime": 1789102546.777397,
-    "seen": 1789102596.9703863,
-    "ast_hash": "0f4762588cc213f57cf48420ea890b54",
     "semantic_hash": ""
   }
 }

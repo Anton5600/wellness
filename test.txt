@@ -1,0 +1,614 @@
+Автоматическое тестирование: Что и как прогнать
+Что автоматизируется
+Уровень 1: Юнит-тесты чистых функций        → Vitest (уже есть)
+Уровень 2: Интеграционные тесты сервисов    → Vitest + Firebase Emulator
+Уровень 3: Комбинаторика движка             → Генератор тестовых случаев
+Уровень 4: Пользовательские сценарии        → Генератор сценариев
+Уровень 5: Валидация данных                 → Свойственное тестирование
+Уровень 6: E2E (UI)                         → Playwright (опционально)
+
+Уровень 1: Расширение юнит-тестов
+Тесты доминанты (которые сейчас, возможно, не покрыты)
+// core/inference/__tests__/dominant.test.ts
+
+import { describe, it, expect } from 'vitest';
+import { getDailyDominant } from '../dominant';
+
+describe('getDailyDominant', () => {
+  it('определяет доминанту из текущего вектора, не из профиля', () => {
+    const currentVector = { anger: 0.8, joy: 0.2 } as PlutchikVector;
+    const profile = { joy: 0.6, trust: 0.4 } as PlutchikVector;
+    
+    const dominant = getDailyDominant(currentVector, [], profile);
+    
+    // Доминанта должна быть Гнев (из текущего), не Радость (из профиля)
+    expect(dominant).toBe('anger');
+  });
+  
+  it('пульсы корректируют доминанту', () => {
+    const currentVector = { joy: 0.6 } as PlutchikVector;
+    const pulses = [
+      { fear: 0.9 } as PlutchikVector,
+      { fear: 0.8 } as PlutchikVector,
+    ];
+    const profile = { joy: 0.6 } as PlutchikVector;
+    
+    const dominant = getDailyDominant(currentVector, pulses, profile);
+    
+    // Пульсы страха перевешивают утреннюю радость
+    expect(dominant).toBe('fear');
+  });
+  
+  it('тай-брейкер: при равных значениях смотрит профиль', () => {
+    const currentVector = { joy: 0.5, trust: 0.5 } as PlutchikVector;
+    const profile = { trust: 0.7, joy: 0.3 } as PlutchikVector;
+    
+    const dominant = getDailyDominant(currentVector, [], profile);
+    
+    // Разница < 0.05 → смотрим профиль → доверие ближе
+    expect(dominant).toBe('trust');
+  });
+});
+
+Тесты выбора практики для каждой эмоции
+
+// core/practiceMatrix/__tests__/practiceSelection.test.ts
+
+import { describe, it, expect } from 'vitest';
+import { selectPractice } from '../practiceMatrix';
+import { ALL_PRACTICES } from '../constants';
+
+// Генерируем тесты для каждой эмоции
+const EMOTIONS: EmotionKey[] = ['joy', 'trust', 'fear', 'surprise', 'sadness', 'disgust', 'anger', 'anticipation'];
+
+describe('selectPractice — каждая эмоция', () => {
+  EMOTIONS.forEach(emotion => {
+    it(`для ${emotion} возвращает валидную практику`, () => {
+      const vector = createVectorWithDominant(emotion, 0.8);
+      const context = createContext();
+      const unlocked = [...ALL_PRACTICES]; // все открыты
+      
+      const practice = selectPractice(vector, context, unlocked);
+      
+      expect(practice).toBeDefined();
+      expect(ALL_PRACTICES).toContain(practice);
+    });
+  });
+});
+
+describe('selectPractice — заблокированные практики', () => {
+  it('если идеальная практика заблокирована — выбирает альтернативу', () => {
+    const vector = createVectorWithDominant('fear', 0.8);
+    const context = createContext();
+    const unlocked: PracticeType[] = ['breathing']; // только дыхание открыто
+    
+    const practice = selectPractice(vector, context, unlocked);
+    
+    expect(practice).toBe('breathing');
+  });
+  
+  it('критический сдвиг даёт экстренную практику даже если заблокирована', () => {
+    const vector = createVectorWithDominant('fear', 0.95); // критический
+    const context = createContext({ isCritical: true });
+    const unlocked: PracticeType[] = ['breathing']; // только дыхание открыто
+    
+    const practice = selectPractice(vector, context, unlocked);
+    
+    // Экстренное переопределение: 5-4-3-2-1 даже если не открыта
+    expect(practice).toBe('grounding54321');
+  });
+});
+
+Уровень 2: Комбинаторика движка (генератор тестов)
+Вместо того чтобы писать тесты для каждой комбинации вручную, генерируем их:
+
+// core/__tests__/engineCombinatorics.test.ts
+
+import { describe, it, expect } from 'vitest';
+import { runRecommendationEngine } from '../recommendation/engine';
+
+const EMOTIONS: EmotionKey[] = ['joy', 'trust', 'fear', 'surprise', 'sadness', 'disgust', 'anger', 'anticipation'];
+const AROUSAL_LEVELS = ['low', 'medium', 'high'] as const;
+const TIME_OF_DAY = ['morning', 'afternoon', 'evening'] as const;
+
+describe('Детерминированный движок — комбинаторика', () => {
+  // Генерируем все комбинации: 8 эмоций × 3 уровня × 3 времени = 72 комбинации
+  EMOTIONS.forEach(emotion => {
+    AROUSAL_LEVELS.forEach(arousal => {
+      TIME_OF_DAY.forEach(timeOfDay => {
+        it(`${emotion} / ${arousal} / ${timeOfDay} → валидная рекомендация`, () => {
+          const vector = createVectorWithDominant(emotion, getIntensity(arousal));
+          const context = createContext({ timeOfDay, arousal });
+          
+          const result = runRecommendationEngine(vector, context);
+          
+          // Базовые проверки
+          expect(result.practice).toBeDefined();
+          expect(result.oil).toBeDefined();
+          expect(result.color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+          
+          // Практика должна быть из списка
+          expect(ALL_PRACTICES).toContain(result.practice);
+          
+          // Масло не должно быть забанено
+          expect(context.bannedOils).not.toContain(result.oil);
+          
+          // Цвет должен соответствовать эмоции
+          expect(result.color).toBe(getColorForEmotion(emotion));
+        });
+      });
+    });
+  });
+});
+
+describe('Детерминированный движок — граничные случаи', () => {
+  it('пустой вектор (все 0) → не падает', () => {
+    const vector = createEmptyVector();
+    const context = createContext();
+    
+    const result = runRecommendationEngine(vector, context);
+    
+    expect(result.practice).toBeDefined();
+    expect(result.oil).toBeDefined();
+  });
+  
+  it('максимальный вектор (все 1) → не падает', () => {
+    const vector = createMaxVector();
+    const context = createContext();
+    
+    const result = runRecommendationEngine(vector, context);
+    
+    expect(result.practice).toBeDefined();
+  });
+  
+  it('вектор с NaN → валидация', () => {
+    const vector = { joy: NaN } as PlutchikVector;
+    
+    expect(() => runRecommendationEngine(vector, createContext()))
+      .toThrow(); // или возвращает фолбэк
+  });
+  
+  it('вектор с отрицательными значениями → валидация', () => {
+    const vector = { joy: -0.5 } as PlutchikVector;
+    
+    expect(() => runRecommendationEngine(vector, createContext()))
+      .toThrow();
+  });
+  
+  it('вектор со значениями > 1 → валидация', () => {
+    const vector = { joy: 1.5 } as PlutchikVector;
+    
+    expect(() => runRecommendationEngine(vector, createContext()))
+      .toThrow();
+  });
+});
+
+Результат: 72 автоматических теста для всех комбинаций эмоций, уровней возбуждения и времени суток. Плюс граничные случаи.
+Уровень 3: Свойственное тестирование (валидация данных)
+Используем fast-check для генерации случайных входных данных:
+
+npm install -D fast-check
+
+// core/__tests__/propertyBased.test.ts
+
+import fc from 'fast-check';
+import { describe, it, expect } from 'vitest';
+import { inferPulseState } from '../inference/pulseInference';
+
+describe('Свойственное тестирование: микро-ввод', () => {
+  it('любой текст не вызывает падение', () => {
+    fc.assert(
+      fc.property(fc.string(), (text) => {
+        const result = inferPulseState({ text });
+        
+        // Результат всегда должен быть валидным
+        expect(result.vector).toBeDefined();
+        expect(result.confidence).toBeGreaterThanOrEqual(0);
+        expect(result.confidence).toBeLessThanOrEqual(1);
+        
+        // Вектор всегда в пределах [0, 1]
+        Object.values(result.vector).forEach(v => {
+          expect(v).toBeGreaterThanOrEqual(0);
+          expect(v).toBeLessThanOrEqual(1);
+        });
+      }),
+      { numRuns: 1000 }  // 1000 случайных строк
+    );
+  });
+  
+  it('любой вектор Плутчика → валидная доминанта', () => {
+    const vectorArbitrary = fc.record({
+      joy: fc.float({ min: 0, max: 1 }),
+      trust: fc.float({ min: 0, max: 1 }),
+      fear: fc.float({ min: 0, max: 1 }),
+      surprise: fc.float({ min: 0, max: 1 }),
+      sadness: fc.float({ min: 0, max: 1 }),
+      disgust: fc.float({ min: 0, max: 1 }),
+      anger: fc.float({ min: 0, max: 1 }),
+      anticipation: fc.float({ min: 0, max: 1 }),
+    });
+    
+    fc.assert(
+      fc.property(vectorArbitrary, (vector) => {
+        const dominant = getDailyDominant(vector as PlutchikVector, [], vector as PlutchikVector);
+        
+        expect(EMOTIONS).toContain(dominant);
+      }),
+      { numRuns: 5000 }  // 5000 случайных векторов
+    );
+  });
+});
+
+Результат: Тысячи случайных входных данных проверяются автоматически. Если есть баг в обработке крайних случаев — он найдётся.
+Уровень 4: Интеграционные тесты с Firebase Emulator
+Установка
+
+npm install -D firebase-tools
+firebase init emulators  # выбрать Firestore, Auth
+
+// test/setupFirebase.ts
+
+import { initializeApp } from 'firebase/app';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+
+const app = initializeApp({ projectId: 'test-project' });
+
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+
+// Подключаемся к эмулятору, не к продакшену
+if (process.env.NODE_ENV === 'test') {
+  connectFirestoreEmulator(db, 'localhost', 8080);
+  connectAuthEmulator(auth, 'http://localhost:9099');
+}
+
+Интеграционные тесты
+
+// services/__tests__/pulseSync.integration.test.ts
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { db } from '../../test/setupFirebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { PulseSyncService } from '../pulseSync';
+
+describe('PulseSyncService — интеграция с Firestore', () => {
+  const testUid = 'test-user-123';
+  const testDate = '2026-09-01';
+  
+  beforeAll(async () => {
+    // Создаём тестовый документ дня
+    await setDoc(doc(db, 'emotionalGraph', `${testUid}_${testDate}`), {
+      userId: testUid,
+      date: testDate,
+      anchor: { vector: { joy: 0.5 }, practice: 'breathing' },
+      pulses: [],
+      dailyVector: { joy: 0.5 },
+    });
+  });
+  
+  afterAll(async () => {
+    // Очищаем тестовые данные
+    await deleteDoc(doc(db, 'emotionalGraph', `${testUid}_${testDate}`));
+  });
+  
+  it('пульс добавляется в массив без дублей', async () => {
+    const service = new PulseSyncService(db);
+    
+    const pulse = {
+      id: 'pulse-1',
+      vector: { fear: 0.7 },
+      confidence: 0.85,
+      source: 'local' as const,
+      delta: 0.5,
+      decision: 'shift' as const,
+      timestamp: Date.now(),
+    };
+    
+    await service.savePulseLocal(testDate, pulse);
+    await service.syncPulsesToFirestore(testUid, testDate);
+    
+    const doc = await getDoc(doc(db, 'emotionalGraph', `${testUid}_${testDate}`));
+    const data = doc.data();
+    
+    expect(data.pulses).toHaveLength(1);
+    expect(data.pulses[0].id).toBe('pulse-1');
+  });
+  
+  it('дубль пульса не добавляется', async () => {
+    const service = new PulseSyncService(db);
+    
+    const pulse = { id: 'pulse-1', /* ... */ };
+    
+    await service.savePulseLocal(testDate, pulse);
+    await service.savePulseLocal(testDate, pulse); // дубль
+    
+    const doc = await getDoc(doc(db, 'emotionalGraph', `${testUid}_${testDate}`));
+    expect(doc.data().pulses).toHaveLength(1); // не 2
+  });
+  
+  it('лимит 5 пульсов соблюдается', async () => {
+    const service = new PulseSyncService(db);
+    
+    for (let i = 0; i < 7; i++) {
+      await service.savePulseLocal(testDate, createPulse(`pulse-${i}`));
+    }
+    
+    const doc = await getDoc(doc(db, 'emotionalGraph', `${testUid}_${testDate}`));
+    expect(doc.data().pulses).toHaveLength(5); // максимум 5
+  });
+});
+
+Запуск с эмулятором
+// package.json
+{
+  "scripts": {
+    "test:unit": "vitest run",
+    "test:integration": "firebase emulators:exec 'vitest run --config vitest.integration.config.ts'",
+    "test:all": "npm run test:unit && npm run test:integration"
+  }
+}
+
+Уровень 5: Автоматические пользовательские сценарии
+Генератор сценариев, который проходит все комбинации:
+// e2e/__tests__/userJourneys.test.ts
+
+import { describe, it, expect } from 'vitest';
+import { simulateUserJourney } from '../helpers/simulateUserJourney';
+
+describe('Пользовательские сценарии — автоматический прогон', () => {
+  
+  // Сценарий 1: Новый пользователь, 30 дней
+  it('полный цикл 30 дней без пропусков', async () => {
+    const journey = await simulateUserJourney({
+      days: 30,
+      skipDays: [],
+      emotions: 'random',  // случайные эмоции каждый день
+      feedback: 'random',  // случайный фидбек
+    });
+    
+    // Проверяем стрик
+    expect(journey.finalStreak).toBe(30);
+    
+    // Проверяем разблокировки
+    expect(journey.unlockedFeatures).toContain('bodyScan');      // день 4
+    expect(journey.unlockedFeatures).toContain('pmr');            // день 8
+    expect(journey.unlockedFeatures).toContain('patterns');       // день 14
+    expect(journey.unlockedFeatures).toContain('vibroPacing');    // день 21
+    expect(journey.unlockedFeatures).toContain('exportPdf');      // день 30
+    
+    // Проверяем калибровки
+    expect(journey.calibrations.length).toBeGreaterThanOrEqual(3); // дни 7, 14, 21, 30
+    
+    // Проверяем паттерны
+    expect(journey.detectedPatterns.length).toBeGreaterThanOrEqual(0);
+  });
+  
+  // Сценарий 2: Пропуски
+  it('пропуск 1 дня — грейс работает', async () => {
+    const journey = await simulateUserJourney({
+      days: 10,
+      skipDays: [5],  // пропуск на 5-й день
+    });
+    
+    expect(journey.finalStreak).toBe(10); // грейс сохранил стрик
+    expect(journey.longestStreak).toBe(10);
+  });
+  
+  it('пропуск 2 дней — стрик сбрасывается', async () => {
+    const journey = await simulateUserJourney({
+      days: 10,
+      skipDays: [5, 6],  // пропуск 2 дней
+    });
+    
+    expect(journey.finalStreak).toBeLessThan(10);
+    expect(journey.longestStreak).toBeGreaterThanOrEqual(4); // до пропуска
+  });
+  
+  // Сценарий 3: Критические состояния
+  it('критический пульс → экстренная практика', async () => {
+    const journey = await simulateUserJourney({
+      days: 5,
+      pulses: [
+        { day: 3, vector: { fear: 0.95 }, decision: 'critical' },
+      ],
+    });
+    
+    const day3 = journey.days[2];
+    expect(day3.emergencyPractice).toBe('grounding54321');
+  });
+  
+  // Сценарий 4: Калибровка
+  it('калибровка на 7-й день обновляет профиль', async () => {
+    const journey = await simulateUserJourney({
+      days: 10,
+      calibrationAnswers: {
+        day7: [/* ответы */],
+      },
+    });
+    
+    expect(journey.profile.version).toBe(2); // обновлён
+    expect(journey.profile.confidence).toBeGreaterThan(0.55); // выше стартовой
+  });
+  
+  // Сценарий 5: Паттерны
+  it('паттерн обнаружен на 14+ день и применён', async () => {
+    const journey = await simulateUserJourney({
+      days: 20,
+      emotionPattern: {
+        morning: { joy: 0.6 },
+        evening: { fear: 0.7 },  // вечерняя тревога
+      },
+      applyPattern: true,  // пользователь нажал «Учесть»
+    });
+    
+    expect(journey.detectedPatterns.length).toBeGreaterThan(0);
+    
+    const pattern = journey.detectedPatterns[0];
+    expect(pattern.type).toBe('temporal');
+    expect(pattern.emotion).toBe('fear');
+    expect(pattern.timeSlot).toBe('evening');
+    
+    // Проверяем, что модификатор применён
+    const dayAfterPattern = journey.days[15];
+    expect(dayAfterPattern.recommendationModifiers).toContain(pattern.id);
+  });
+  
+  // Сценарий 6: Офлайн
+  it('офлайн 3 дня → синхронизация при возврате сети', async () => {
+    const journey = await simulateUserJourney({
+      days: 10,
+      offlineDays: [4, 5, 6],
+    });
+    
+    // Данные за офлайн-дни сохранены локально
+    expect(journey.localStorage.days[3]).toBeDefined();
+    expect(journey.localStorage.days[4]).toBeDefined();
+    expect(journey.localStorage.days[5]).toBeDefined();
+    
+    // При возврате сети — синхронизированы
+    expect(journey.firestore.days[3]).toBeDefined();
+    expect(journey.firestore.days[4]).toBeDefined();
+    expect(journey.firestore.days[5]).toBeDefined();
+  });
+});
+
+Хелпер для симуляции
+
+// e2e/helpers/simulateUserJourney.ts
+
+interface JourneyConfig {
+  days: number;
+  skipDays?: number[];
+  offlineDays?: number[];
+  emotions?: 'random' | 'fixed' | EmotionKey;
+  pulses?: Array<{ day: number; vector: PlutchikVector; decision: string }>;
+  emotionPattern?: { morning: PlutchikVector; evening: PlutchikVector };
+  calibrationAnswers?: Record<string, Answer[]>;
+  applyPattern?: boolean;
+}
+
+async function simulateUserJourney(config: JourneyConfig): Promise<JourneyResult> {
+  const result: JourneyResult = {
+    days: [],
+    profile: createInitialProfile(),
+    unlockedFeatures: [],
+    detectedPatterns: [],
+    calibrations: [],
+    localStorage: { days: {} },
+    firestore: { days: {} },
+  };
+  
+  for (let day = 1; day <= config.days; day++) {
+    // Пропуск дня
+    if (config.skipDays?.includes(day)) {
+      result.days.push({ day, status: 'skipped' });
+      continue;
+    }
+    
+    // Офлайн
+    const isOffline = config.offlineDays?.includes(day) ?? false;
+    
+    // Утренний ритуал
+    const morningVector = getMorningVector(config, day);
+    const morningResult = runRecommendationEngine(morningVector, createContext(day));
+    
+    // Пульсы
+    const dayPulses = config.pulses?.filter(p => p.day === day) ?? [];
+    
+    // Вечерний фидбек
+    const feedback = getRandomFeedback();
+    
+    // Калибровка
+    if (config.calibrationAnswers?.[`day${day}`]) {
+      const answers = config.calibrationAnswers[`day${day}`];
+      result.profile = applyCalibration(result.profile, answers);
+      result.calibrations.push({ day, answers });
+    }
+    
+    // Разблокировки
+    const unlocked = checkUnlocks(day, result.longestStreak);
+    result.unlockedFeatures.push(...unlocked);
+    
+    // Паттерны
+    if (day >= 14) {
+      const patterns = detectPatterns(result.days);
+      result.detectedPatterns.push(...patterns);
+    }
+    
+    result.days.push({
+      day,
+      morningVector,
+      morningResult,
+      pulses: dayPulses,
+      feedback,
+      isOffline,
+      status: 'completed',
+    });
+  }
+  
+  return result;
+}
+
+Уровень 6: CI/CD пайплайн
+
+# .github/workflows/test.yml
+
+name: Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx vitest run --coverage
+      - run: npx vite build
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm install -g firebase-tools
+      - run: firebase emulators:exec 'npx vitest run --config vitest.integration.config.ts'
+
+  e2e-scenarios:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npx vitest run --config vitest.e2e.config.ts
+
+Что НЕ автоматизируется
+❌ Визуальные анимации (нужен ручной просмотр или скриншот-тесты)
+❌ Haptics на реальных устройствах (нужно физическое устройство)
+❌ Тон инсайтов от LLM (нужна ручная оценка или LLM-as-judge)
+❌ Субъективное ощущение терапевтичности (нужны пользовательские тесты)
+❌ Доступность VoiceOver/TalkBack (частично автоматизируется, но нужен ручной)
+❌ Производительность анимаций (нужен профилировщик)
+
+Итого: Что добавить в проект
+□ Расширить юнит-тесты доминанты и пульсов (+10 тестов)
+□ Добавить комбинаторные тесты движка (72 комбинации)
+□ Добавить свойственное тестирование (fast-check, 5000 векторов)
+□ Добавить интеграционные тесты с Firebase Emulator
+□ Добавить генератор пользовательских сценариев (6 сценариев)
+□ Настроить CI/CD пайплайн (3 джоба)
+□ Покрытие тестами: цель > 80% для чистых функций

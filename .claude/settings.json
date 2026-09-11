@@ -1,4 +1,7 @@
 {
+  "env": {
+    "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1000000"
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -6,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "C:/Users/\u0410\u043d\u0442\u043e\u043d/.local/bin/graphify.EXE hook-guard search"
+            "command": "C:/Users/Антон/.local/bin/graphify.EXE hook-guard search"
           }
         ]
       },
@@ -15,10 +18,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "C:/Users/\u0410\u043d\u0442\u043e\u043d/.local/bin/graphify.EXE hook-guard read"
+            "command": "C:/Users/Антон/.local/bin/graphify.EXE hook-guard read"
           }
         ]
       }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(cd:*)",
+      "Bash(npx tsc:*)",
+      "Bash(uv run:*)"
     ]
   }
 }
