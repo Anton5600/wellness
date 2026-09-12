@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PlutchikVector, PulseEntry } from '../../types';
-import { vectorDistance, classifyPulse, computeDailyVector, pulseGate, PULSE_CONFIG } from './pulse';
+import { vectorDistance, classifyPulse, computeDailyVector, pulseGate, pulseDirection, PULSE_CONFIG } from './pulse';
 
 const V: PlutchikVector = {
   joy: 0.5, trust: 0.6, fear: 0.2, surprise: 0.3, sadness: 0.2, disgust: 0.1, anger: 0.2, anticipation: 0.6,
@@ -105,5 +105,34 @@ describe('pulseGate', () => {
     const res = pulseGate(pulses, now);
     expect(res.allowed).toBe(false);
     expect(res.reason).toBe('limit');
+  });
+});
+
+describe('pulseDirection', () => {
+  const heavy: PlutchikVector = { ...V, sadness: 0.8, joy: 0.2, fear: 0.5 };
+  const light: PlutchikVector = { ...V, sadness: 0.15, joy: 0.8, fear: 0.15 };
+
+  it('утро тяжёлое, сейчас легче → improved', () => {
+    expect(pulseDirection(heavy, light)).toBe('improved');
+  });
+
+  it('утро лёгкое, сейчас тяжелее → worsened', () => {
+    expect(pulseDirection(light, heavy)).toBe('worsened');
+  });
+
+  it('тот же вектор → neutral', () => {
+    expect(pulseDirection(heavy, heavy)).toBe('neutral');
+  });
+
+  it('небольшая разница считается шумом, а не сдвигом', () => {
+    const slightly: PlutchikVector = { ...heavy, sadness: heavy.sadness - 0.1 };
+    expect(pulseDirection(heavy, slightly)).toBe('neutral');
+  });
+
+  it('смена доминанты без изменения «тяжести» — не улучшение', () => {
+    // Грусть сменилась на гнев: сумма негативных осей та же.
+    const sadnessToAnger: PlutchikVector = { ...V, sadness: 0.2, anger: 0.8, fear: 0.2, joy: 0.5 };
+    const angerToSadness: PlutchikVector = { ...V, sadness: 0.8, anger: 0.2, fear: 0.2, joy: 0.5 };
+    expect(pulseDirection(sadnessToAnger, angerToSadness)).toBe('neutral');
   });
 });

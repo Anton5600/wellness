@@ -1,4 +1,5 @@
 import { EmotionKey, PlutchikVector, PulseEntry, PulseScenario } from '../../types';
+import { NEGATIVE_EMOTIONS } from './pattern';
 
 /**
  * Движок «Пульса дня» — чистая детерминированная логика повторного чекина состояния.
@@ -35,6 +36,30 @@ export const vectorDistance = (a: PlutchikVector, b: PlutchikVector): number => 
 /** A (стабильно) / B (резкий сдвиг) по порогу `shiftThreshold`. */
 export const classifyPulse = (anchor: PlutchikVector, current: PlutchikVector): PulseScenario =>
   vectorDistance(anchor, current) >= PULSE_CONFIG.shiftThreshold ? 'shift' : 'stable';
+
+/**
+ * Куда сдвинулось состояние относительно утреннего якоря.
+ *
+ * `classifyPulse` отвечает только на вопрос «изменилось ли» — по максимальной разнице осей,
+ * не различая знак. Улучшение и ухудшение попадали в один сценарий `shift`, поэтому человек,
+ * выбравший «радостно, отлично», получал текст «что-то выбило тебя из колеи».
+ */
+export type PulseDirection = 'improved' | 'worsened' | 'neutral';
+
+/** Разница «тяжести», ниже которой считаем состояние неизменным (шум). */
+export const DIRECTION_THRESHOLD = 0.05;
+
+/** Средняя выраженность негативных осей: 0 — «легко», 1 — «тяжело». */
+const negativityOf = (vector: PlutchikVector): number =>
+  NEGATIVE_EMOTIONS.reduce((sum, key) => sum + (vector[key] ?? 0), 0) / NEGATIVE_EMOTIONS.length;
+
+/** Направление сдвига: состояние стало легче, тяжелее или осталось тем же. */
+export const pulseDirection = (anchor: PlutchikVector, current: PlutchikVector): PulseDirection => {
+  const delta = negativityOf(current) - negativityOf(anchor);
+  if (delta <= -DIRECTION_THRESHOLD) return 'improved';
+  if (delta >= DIRECTION_THRESHOLD) return 'worsened';
+  return 'neutral';
+};
 
 /**
  * Взвешенный по времени дневной вектор (Time-Weighted Average):

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -34,7 +34,8 @@ import LegalScreen from './screens/LegalScreen';
 import { myTrackerService } from './services/myTrackerService';
 import { compassService } from './services/compassService';
 import { checkPlutchikProfile } from './services/firestoreService';
-import { useFirestoreSync, SYNC_EVENT } from './hooks/useFirestoreSync';
+import { useFirestoreSync, syncNow, SYNC_EVENT } from './hooks/useFirestoreSync';
+import { PullToRefresh } from './components/PullToRefresh';
 
 const BackButtonHandler: React.FC = () => {
   const navigate = useNavigate();
@@ -106,7 +107,7 @@ const App: React.FC = () => {
         <CartProvider>
           <div className="bg-background-light dark:bg-background-dark min-h-[100dvh]">
             <div className="relative mx-auto flex h-full min-h-[100dvh] w-full max-w-[430px] flex-col overflow-x-hidden bg-white shadow-2xl dark:bg-[#0a0a0a] pb-[env(safe-area-inset-bottom)]">
-                <AppRoutes />
+                <AppShell />
             </div>
           </div>
         </CartProvider>
@@ -127,19 +128,28 @@ const MAX_PROFILE_ATTEMPTS = 3;
 
 /**
  * Состояние профиля Плутчика для гейтов онбординга. `no-user` — ещё не авторизован
- * (гейты тогда просто пропускают детей, как и раньше).
+ * (гейты тогда просто пропускают детей, как и раньше). `unavailable` — прочитать профиль
+ * так и не удалось.
  *
  * Ретраи здесь только на `unknown` — неудачное чтение (таймаут, отказ правил, нет токена).
  * Достоверный `absent` означает нового пользователя, и ждать ему нечего: достоверность
  * обеспечивает `waitForAuthToken()` внутри `checkPlutchikProfile`. Ретрай на `absent` давал
  * новичку ~12s спиннера (2s+4s в прямом гейте, затем столько же в обратном).
  *
+ * Исчерпав попытки, ставим `unavailable`, а НЕ `absent`: сбой чтения — не доказательство,
+ * что профиля нет. Раньше здесь было `absent`, и при недоступном Firestore вернувшийся
+ * пользователь уходил проходить онбординг заново, переписывая свой baseline локально
+ * (так и случилось на Android, где Firestore не читался — см. capacitor.config.ts).
+ *
  * На `SYNC_EVENT` проверка повторяется: фоновая синхронизация могла подтянуть профиль из
  * Firestore на свежей установке, где локальный кеш пуст.
  */
-const usePlutchikProfileGate = (): 'checking' | 'present' | 'absent' | 'no-user' => {
+type ProfileGateState = 'checking' | 'present' | 'absent' | 'no-user' | 'unavailable';
+
+const usePlutchikProfileGate = (): { state: ProfileGateState; retry: () => void } => {
   const { user } = useAuth();
-  const [state, setState] = useState<'checking' | 'present' | 'absent' | 'no-user'>('checking');
+  const [state, setState] = useState<ProfileGateState>('checking');
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -162,7 +172,7 @@ const usePlutchikProfileGate = (): 'checking' | 'present' | 'absent' | 'no-user'
           await sleep((attempt + 1) * 1000); // 'unknown' — чтение не удалось, пробуем ещё
           if (!active) return;
         }
-        setState('absent');
+        setState('unavailable');
       } finally {
         running = false;
       }
@@ -175,10 +185,32 @@ const usePlutchikProfileGate = (): 'checking' | 'present' | 'absent' | 'no-user'
       active = false;
       window.removeEventListener(SYNC_EVENT, check);
     };
-  }, [user]);
+  }, [user, retryCount]);
 
-  return state;
+  const retry = useCallback(() => {
+    setState('checking');
+    setRetryCount((n) => n + 1);
+  }, []);
+
+  return { state, retry };
 };
+
+/** Экран на случай, когда профиль прочитать не удалось: онбординг не показываем. */
+const ProfileUnavailable: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-background-light px-10 text-center dark:bg-background-dark">
+    <span className="material-symbols-outlined text-[40px] text-sage dark:text-[#a0c09d]">cloud_off</span>
+    <p className="font-semibold text-forest dark:text-white">Не удалось загрузить профиль</p>
+    <p className="text-sm text-sage dark:text-[#a0c09d]">
+      Проверьте подключение и попробуйте снова — данные сохранены.
+    </p>
+    <button
+      onClick={onRetry}
+      className="mt-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-forest transition-transform active:scale-95"
+    >
+      Повторить
+    </button>
+  </div>
+);
 
 /**
  * Гейт онбординга нового пользователя. Пока базовый профиль Плутчика не сохранён,
@@ -186,9 +218,10 @@ const usePlutchikProfileGate = (): 'checking' | 'present' | 'absent' | 'no-user'
  * локальному кешу, затем по Firestore (`plutchikProfiles/{uid}`).
  */
 const RequireOnboarding: React.FC = () => {
-  const state = usePlutchikProfileGate();
+  const { state, retry } = usePlutchikProfileGate();
 
   if (state === 'checking') return <GateSpinner />;
+  if (state === 'unavailable') return <ProfileUnavailable onRetry={retry} />;
   if (state === 'absent') return <Navigate to="/rituals" replace />;
   return <Outlet />;
 };
@@ -198,9 +231,10 @@ const RequireOnboarding: React.FC = () => {
  * или с другого устройства), экраны онбординга не показываем — сразу на дашборд.
  */
 const RequireNoOnboarding: React.FC = () => {
-  const state = usePlutchikProfileGate();
+  const { state, retry } = usePlutchikProfileGate();
 
   if (state === 'checking') return <GateSpinner />;
+  if (state === 'unavailable') return <ProfileUnavailable onRetry={retry} />;
   if (state === 'present') return <Navigate to="/" replace />;
   return <Outlet />;
 };
@@ -311,6 +345,25 @@ const AppRoutes: React.FC = () => {
         )}
       </Routes>
     </HashRouter>
+  );
+};
+
+/**
+ * Оболочка приложения: подключает жест «потянуть вниз для обновления».
+ * Живёт внутри `AuthProvider`, потому что для синхронизации нужен uid.
+ */
+const AppShell: React.FC = () => {
+  const { user } = useAuth();
+
+  const refresh = useCallback(async () => {
+    if (!user?.uid || user.uid === 'guest') return;
+    await syncNow(user.uid);
+  }, [user?.uid]);
+
+  return (
+    <PullToRefresh onRefresh={refresh}>
+      <AppRoutes />
+    </PullToRefresh>
   );
 };
 

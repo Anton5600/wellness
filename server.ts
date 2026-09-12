@@ -16,6 +16,8 @@ import {
 import { breathingPatternFor } from "./services/recommendation/breathing";
 import { colorForDominant, colorForDyad } from "./services/recommendation/color";
 import { detectCrisis } from "./services/recommendation/safety";
+import { oilsForEmotion } from "./data/emotionOils";
+import { emotionalReasonFor } from "./data/oilReasons";
 import { OilEntry, EmotionKey, EffectMode, MixedEmotion } from "./types";
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getAuth, Auth } from "firebase-admin/auth";
@@ -126,8 +128,17 @@ const MODE_REASON: Record<EffectMode, string> = {
 const modeFor = (oil: OilEntry, dominant: EmotionKey): EffectMode =>
   oil.effects.find((eff) => eff.emotion === dominant)?.mode ?? 'balance';
 
-const defaultAromaReason = (oil: OilEntry, dominant: EmotionKey): string =>
-  `«${oil.name}» ${MODE_REASON[modeFor(oil, dominant)]} — то, что нужно для состояния «${EMOTION_LABELS[dominant].toLowerCase()}».`;
+/**
+ * Текст рекомендации, когда ИИ недоступен. Приоритет — эмоциональное описание масла из
+ * справочников (`data/oilReasons.ts`); общий шаблон по режиму действия остаётся фолбэком
+ * для масел, описания у которых ещё нет.
+ */
+const defaultAromaReason = (oil: OilEntry, dominant: EmotionKey): string => {
+  const label = EMOTION_LABELS[dominant].toLowerCase();
+  const reason = emotionalReasonFor(oil.id);
+  if (reason) return `«${oil.name}» — ${reason}. Подходит для состояния «${label}».`;
+  return `«${oil.name}» ${MODE_REASON[modeFor(oil, dominant)]} — то, что нужно для состояния «${label}».`;
+};
 
 const defaultInsight = (oil: OilEntry): string =>
   `Сделайте несколько спокойных вдохов с «${oil.name}» и вернитесь к себе. ${oil.instruction}`;
@@ -149,13 +160,21 @@ async function selectOilWithLLM(
   dyad?: MixedEmotion
 ): Promise<OilSelection | null> {
   const summary = shortlist
-    .map((o) => `- id: ${o.id} | ${o.name} — ${o.description} (${o.instruction})`)
+    .map((o) => {
+      const reason = emotionalReasonFor(o.id);
+      const action = reason ? ` | действие: ${reason}` : "";
+      return `- id: ${o.id} | ${o.name} — ${o.description}${action} (${o.instruction})`;
+    })
     .join("\n");
 
   const system =
     "Ты — эмпатичный ароматерапевт в приложении «Внутренний Компас». " +
     "По словам пользователя определи его доминирующую эмоцию и выбери РОВНО одно эфирное масло " +
     "из предложенного списка (по полю id), которое наилучшим образом поддержит текущее состояние. " +
+    "Список упорядочен по релевантности: первое масло — главное для этого состояния, " +
+    "следующие — проверенные варианты. " +
+    "Опирайся на поле «действие»: это выверенные формулировки из справочников, " +
+    "и в тексте ответа держись того же смысла. " +
     "Не выдумывай масла, которых нет в списке. " +
     "Напиши короткий интригующий тизер на завтра.";
 
@@ -858,11 +877,21 @@ async function startServer() {
         eveningHarder,
       });
 
-      const selection = await selectOilWithLLM(shortlist, microInput, keyword.dyad);
+      // Жёсткая привязка «эмоция → масло»: там, где для доминанты заданы масла из источников,
+      // выбор ИИ ограничен только ими (главное и варианты). Иначе он выбирал из всего шорт-листа
+      // и при доминанте «Радость» мог выдать балансирующее масло из хвоста вместо масла радости.
+      const mappedForDominant = keyword.dyad
+        ? []
+        : oilsForEmotion(keyword.dominant)
+            .map((id) => shortlist.find((o) => o.id === id))
+            .filter((o): o is OilEntry => Boolean(o));
+      const candidates = mappedForDominant.length > 0 ? mappedForDominant : shortlist;
+
+      const selection = await selectOilWithLLM(candidates, microInput, keyword.dyad);
       const dyad = keyword.dyad;
-      // При диаде доминанта детерминирована (сильнейшая из пары); LLM не переопределяет её.
-      // Иначе — доминанта и масло из одного источника (LLM), фолбэк — детерминированный матчер.
-      const dominant: EmotionKey = dyad
+      // Доминанта детерминирована: при диаде это сильнейшая из пары, при заданной привязке —
+      // эмоция из матчера (иначе текст описывал бы одну эмоцию, а масло относилось к другой).
+      const dominant: EmotionKey = dyad || mappedForDominant.length > 0
         ? keyword.dominant
         : selection?.dominant ?? keyword.dominant;
       const vector = dyad
@@ -870,9 +899,9 @@ async function startServer() {
         : bumpDominant(baseline, dominant);
       const dominantLabel = dyad ? dyadLabel(dyad) : EMOTION_LABELS[dominant];
       const chosen =
-        selection && shortlist.some((o) => o.id === selection.oilId)
-          ? shortlist.find((o) => o.id === selection.oilId)!
-          : shortlist[0];
+        selection && candidates.some((o) => o.id === selection.oilId)
+          ? candidates.find((o) => o.id === selection.oilId)!
+          : candidates[0];
 
       res.json({
         result: {

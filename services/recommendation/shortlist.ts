@@ -1,5 +1,6 @@
 import { PlutchikVector, OilEntry, EffectMode, EmotionKey, MixedEmotion } from '../../types';
 import { OIL_DATABASE } from '../../data/oilDatabase';
+import { oilsForEmotion } from '../../data/emotionOils';
 import { DEFAULT_CONFIG, RecommendationConfig } from './config';
 import { bannedOilIds, EveningFeedbackEntry } from './effectiveness';
 import { chronotypeForHour } from './chronotype';
@@ -77,11 +78,21 @@ export const candidateShortlist = ({
     }
   }
 
+  // Жёсткая привязка «эмоция → масло»: главное масло эмоции и дополнительные варианты
+  // из источников идут первыми, в заданном порядке. Хронотип здесь не фильтр, а сигнал
+  // (как в ветке диад): курированное масло не должно выпадать из-за времени суток.
+  const mapped = dominant && !dyad
+    ? oilsForEmotion(dominant)
+        .map((id) => oilDb.find((o) => o.id === id))
+        .filter((o): o is OilEntry => Boolean(o) && !banned.has(o.id))
+    : [];
+  const mappedIds = new Set(mapped.map((o) => o.id));
+
   const strategy = strategyFor(classifyShape(vector, cfg));
   const targets = coverageTargets(dominant, dyad);
 
   const ranked = oilDb
-    .filter((oil) => !banned.has(oil.id))
+    .filter((oil) => !banned.has(oil.id) && !mappedIds.has(oil.id))
     .filter((oil) => oil.chronotype.includes(chrono))
     .map((oil) => ({
       oil,
@@ -93,9 +104,13 @@ export const candidateShortlist = ({
       coverage: emotionCoverage(oil, targets),
     }))
     .filter((c) => c.matches > 0)
-    .sort((a, b) => b.matches - a.matches || b.coverage - a.coverage);
+    // Сначала покрытие целевой эмоции, потом совпадение по режиму: масло, которое реально
+    // работает с доминантой, должно обгонять универсальное «подходящее по форме колеса».
+    .sort((a, b) => b.coverage - a.coverage || b.matches - a.matches);
 
-  if (ranked.length > 0) return ranked.map((c) => c.oil);
+  if (mapped.length > 0 || ranked.length > 0) {
+    return [...mapped, ...ranked.map((c) => c.oil)];
+  }
 
   // Фолбэк 1: любое масло под хронотип (вне бана), предпочитая нацеленные на целевые эмоции.
   const byChrono = oilDb

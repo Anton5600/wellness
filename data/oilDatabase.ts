@@ -23,7 +23,7 @@ export const OIL_DATABASE: OilEntry[] = [
       { emotion: 'surprise', mode: 'awaken' },
     ],
     chronotype: ['morning', 'day'],
-    instruction: 'Вдохните из флакона или нанесите 1 каплю на заднюю поверхность шеи.',
+    instruction: '1 капля на ладонь, растереть и 3–5 глубоких вдохов «с ладоней»; в разведении — на воротниковую зону.',
     price: 2100,
   },
   {
@@ -37,7 +37,7 @@ export const OIL_DATABASE: OilEntry[] = [
       { emotion: 'anticipation', mode: 'awaken' },
     ],
     chronotype: ['morning', 'day'],
-    instruction: '1–2 капли в диффузор или на запястья для бодрости.',
+    instruction: '1–2 капли в диффузор или на запястья для бодрости. Избегайте солнца 12 ч.',
     price: 1500,
   },
   {
@@ -65,7 +65,7 @@ export const OIL_DATABASE: OilEntry[] = [
     ],
     dyads: ['alarm'],
     chronotype: ['evening'],
-    instruction: '1 капля на подушку или виски перед сном.',
+    instruction: 'На подошвы стоп, виски и заднюю поверхность шеи; распыляйте в спальне перед сном.',
     price: 2500,
   },
   {
@@ -95,7 +95,7 @@ export const OIL_DATABASE: OilEntry[] = [
       { emotion: 'sadness', mode: 'support' },
     ],
     chronotype: ['evening'],
-    instruction: 'Нанесите 1 каплю на стопы или область сердца.',
+    instruction: '1–3 капли на область сердца; распыляйте во время медитации.',
     price: 7500,
   },
   {
@@ -108,7 +108,7 @@ export const OIL_DATABASE: OilEntry[] = [
       { emotion: 'fear', mode: 'support' },
     ],
     chronotype: ['evening'],
-    instruction: 'Распылите или нанесите на стопы для заземления.',
+    instruction: '1–3 капли (1:10 с базовым) втирайте в подошвы стоп и область крестца.',
     price: 1700,
   },
   {
@@ -121,7 +121,7 @@ export const OIL_DATABASE: OilEntry[] = [
       { emotion: 'fear', mode: 'support' },
     ],
     chronotype: ['evening'],
-    instruction: '1 капля на стопы перед сном.',
+    instruction: '1–3 капли (1:10 с базовым) на подошвы стоп и крестец для заземления.',
     price: 4600,
   },
   {
@@ -148,7 +148,7 @@ export const OIL_DATABASE: OilEntry[] = [
       { emotion: 'joy', mode: 'support' },
     ],
     chronotype: ['morning', 'day'],
-    instruction: '1 капля в стакан воды или в диффузор.',
+    instruction: '1–3 капли на виски и запястья перед умственной работой; 1–2 капли в прохладную воду. Избегайте солнца 12 ч.',
     price: 1400,
   },
   {
@@ -175,7 +175,7 @@ export const OIL_DATABASE: OilEntry[] = [
       { emotion: 'sadness', mode: 'support' },
     ],
     chronotype: ['evening'],
-    instruction: '1 капля на область сердца или за уши.',
+    instruction: '1–2 капли на темя, лоб или за уши; распыляйте во время тихих размышлений.',
     price: 8200,
   },
   {
@@ -188,7 +188,7 @@ export const OIL_DATABASE: OilEntry[] = [
       { emotion: 'disgust', mode: 'balance' },
     ],
     chronotype: ['day'],
-    instruction: 'Нанесите на стопы или распылите для очищения.',
+    instruction: '1–3 капли (1:10) на подошвы и грудную клетку для границ; распыляйте для очищения воздуха.',
     price: 2100,
   },
   {
@@ -201,21 +201,22 @@ export const OIL_DATABASE: OilEntry[] = [
       { emotion: 'disgust', mode: 'awaken' },
     ],
     chronotype: ['morning', 'day'],
-    instruction: 'Вдохните из флакона или распылите для ясности.',
+    instruction: 'Помассируйте область груди для свежести и лёгкости; распыляйте для очищения воздуха.',
     price: 1700,
   },
   {
     id: 'juniper_berry',
     name: 'Можжевельник',
-    description: 'Действует как природное очищающее средство.',
+    description: 'Преодолевает иррациональные страхи, даёт энергетическую защиту.',
     icon: 'local_florist',
     effects: [
+      { emotion: 'fear', mode: 'support' },
       { emotion: 'disgust', mode: 'support' },
       { emotion: 'disgust', mode: 'balance' },
     ],
     dyads: ['alarm'],
     chronotype: ['day'],
-    instruction: 'Нанесите на грудь или распылите.',
+    instruction: '1 капля на область лба или за уши перед сном; распыляйте в периоды тревожности.',
     price: 2200,
   },
   {
@@ -254,7 +255,7 @@ export const OIL_DATABASE: OilEntry[] = [
       { emotion: 'anticipation', mode: 'support' },
     ],
     chronotype: ['evening'],
-    instruction: 'Нанесите на пульсовые точки или распылите.',
+    instruction: '1–2 капли на лоб или за уши; распыляйте с цитрусовыми для баланса.',
     price: 3800,
   },
   {
@@ -268,7 +269,7 @@ export const OIL_DATABASE: OilEntry[] = [
     ],
     dyads: ['disappointment'],
     chronotype: ['day', 'evening'],
-    instruction: 'Нанесите на область живота или запястья.',
+    instruction: '1–2 капли (в разведении) на область сердца и запястья.',
     price: 3400,
   },
 
@@ -310,7 +311,7 @@ export const OIL_DATABASE: OilEntry[] = [
     ],
     dyads: ['love', 'disappointment'],
     chronotype: ['evening'],
-    instruction: 'Распыляйте в спальне или нанесите на область сердца для чувства безопасности.',
+    instruction: 'Распыляйте в спальне или нанесите 1–3 капли (1:10) на область сердца.',
   },
   {
     id: 'thyme',
@@ -318,12 +319,13 @@ export const OIL_DATABASE: OilEntry[] = [
     description: 'Очищает от горечи и обид, открывает сердце для прощения.',
     icon: 'grass',
     effects: [
+      { emotion: 'anger', mode: 'balance' },
       { emotion: 'sadness', mode: 'balance' },
       { emotion: 'disgust', mode: 'balance' },
     ],
     dyads: ['remorse', 'love'],
     chronotype: ['day', 'evening'],
-    instruction: '1 капля в диффузор (метод зубочистки) для эмоционального освобождения.',
+    instruction: 'ТОЛЬКО в разведении 1:10 с базовым маслом — 1 капля на область сердца, шею и запястья.',
   },
   {
     id: 'forgive',
@@ -435,12 +437,13 @@ export const OIL_DATABASE: OilEntry[] = [
     description: 'Учит открытости и доверию в отношениях.',
     icon: 'volunteer_activism',
     effects: [
+      { emotion: 'trust', mode: 'support' },
       { emotion: 'surprise', mode: 'support' },
       { emotion: 'sadness', mode: 'support' },
     ],
     dyads: ['disappointment'],
     chronotype: ['day', 'evening'],
-    instruction: '1–2 капли (в разведении) на область сердца и груди.',
+    instruction: '1–3 капли (1:10 с базовым маслом) на центр груди — область сердца.',
   },
   {
     id: 'pink_pepper',
@@ -466,7 +469,7 @@ export const OIL_DATABASE: OilEntry[] = [
     ],
     dyads: ['aggressiveness', 'contempt'],
     chronotype: ['morning', 'day'],
-    instruction: 'Распыляйте с цитрусовыми для фокуса и ясности стратегии.',
+    instruction: '1–2 капли (в разведении) на виски, шею и точки пульса; распыляйте в острых ситуациях.',
   },
   {
     id: 'motivate',
@@ -500,12 +503,13 @@ export const OIL_DATABASE: OilEntry[] = [
     description: 'Возвращает детский восторг и веру в чудеса.',
     icon: 'emoji_nature',
     effects: [
+      { emotion: 'surprise', mode: 'awaken' },
       { emotion: 'anticipation', mode: 'awaken' },
       { emotion: 'joy', mode: 'awaken' },
     ],
     dyads: ['optimism'],
     chronotype: ['morning', 'day'],
-    instruction: 'Распыляйте по утрам для детского восторга и предвкушения.',
+    instruction: '1–3 капли (в разведении) вокруг пупка, на область сердца и запястья. Избегайте солнца 12 ч.',
   },
   {
     id: 'melissa',
@@ -558,6 +562,42 @@ export const OIL_DATABASE: OilEntry[] = [
     dyads: ['optimism'],
     chronotype: ['morning', 'day'],
     instruction: 'Распыляйте для лёгкости и позитива. Избегайте солнца 12 ч.',
+  },
+  {
+    id: 'lemongrass',
+    name: 'Лемонграсс',
+    description: 'Очищает от застоявшейся негативной энергии.',
+    icon: 'grass',
+    effects: [
+      { emotion: 'disgust', mode: 'balance' },
+      { emotion: 'disgust', mode: 'awaken' },
+    ],
+    chronotype: ['morning', 'day'],
+    instruction: 'Разведите 1–3 капли с базовым маслом и нанесите на стопы и грудную клетку.',
+  },
+  {
+    id: 'console',
+    name: 'Утешение (смесь)',
+    description: 'Выравнивает эмоциональный фон при глубокой скорби и утрате.',
+    icon: 'volunteer_activism',
+    effects: [
+      { emotion: 'sadness', mode: 'support' },
+      { emotion: 'sadness', mode: 'balance' },
+    ],
+    chronotype: ['day', 'evening'],
+    instruction: 'Нанесите 1–3 капли на область сердца в моменты печали и утраты.',
+  },
+  {
+    id: 'purify',
+    name: 'Очищение (смесь)',
+    description: 'Нейтрализует токсичные энергии и застоявшийся «мусор».',
+    icon: 'cleaning_services',
+    effects: [
+      { emotion: 'disgust', mode: 'balance' },
+      { emotion: 'disgust', mode: 'support' },
+    ],
+    chronotype: ['morning', 'day'],
+    instruction: 'Распылите для очищения воздуха или нанесите на стопы для восстановления границ.',
   },
 ];
 

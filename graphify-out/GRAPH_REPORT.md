@@ -1,25 +1,25 @@
-# Graph Report - wellness  (2026-09-11)
+# Graph Report - wellness  (2026-09-12)
 
 ## Corpus Check
-- 150 files · ~109,021 words
+- 157 files · ~114,234 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 837 nodes · 2190 edges · 38 communities (34 shown, 4 thin omitted)
+- 871 nodes · 2288 edges · 35 communities (31 shown, 4 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 10 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a0166882`
+- Built from commit: `41df0301`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- AuthContext.tsx
-- CompassService
+- useAuth
+- DevDateTraveller.tsx
 - devDependencies
-- QuizResultScreen.tsx
-- shortlist.ts
+- PullToRefresh.tsx
+- types.ts
 - WearableService
 - dependencies
 - «Внутренний Компас» — защита проекта перед экспертами
@@ -38,67 +38,64 @@
 - capacitor.config.ts
 - CLAUDE.md
 - DailyRitual.tsx
-- practices/index.ts
-- inference.ts
+- practiceMemory.ts
+- AuthContext.tsx
 - firestoreService.ts
 - App.tsx
-- ProfileScreen.tsx
+- BottomNavBar.tsx
 - compassService.ts
 - devBridgeOverride.ts
-- OnboardingResultScreen.tsx
-- types.ts
-- shortlist.test.ts
-- breathing.ts
-- PlutchikWheel.tsx
+- QuizResultScreen.tsx
+- ResourcesScreen.tsx
 
 ## God Nodes (most connected - your core abstractions)
-1. `useAuth()` - 48 edges
+1. `useAuth()` - 49 edges
 2. `CompassService` - 43 edges
-3. `EmotionKey` - 36 edges
-4. `DailyRitual()` - 22 edges
+3. `EmotionKey` - 39 edges
+4. `DailyRitual()` - 23 edges
 5. `EmotionalGraphEntry` - 22 edges
 6. `WearableService` - 19 edges
 7. `PlutchikVector` - 19 edges
 8. `PracticeId` - 19 edges
-9. `usePracticeTimer()` - 17 edges
-10. `startServer()` - 17 edges
+9. `startServer()` - 18 edges
+10. `usePracticeTimer()` - 17 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `PlutchikWheelProps` --references--> `PlutchikVector`  [EXTRACTED]
-  components/PlutchikWheel.tsx → types.ts
 - `EmotionMeta` --references--> `EmotionKey`  [EXTRACTED]
   components/PlutchikWheel.tsx → types.ts
-- `CartIcon()` --calls--> `useCart()`  [EXTRACTED]
-  screens/DashboardScreen.tsx → context/CartContext.tsx
 - `OilSelection` --references--> `EmotionKey`  [EXTRACTED]
   server.ts → types.ts
 - `AromaRecommendation` --references--> `EmotionKey`  [EXTRACTED]
   services/aromaRecommendationService.ts → types.ts
+- `usePlutchikProfileGate()` --calls--> `useAuth()`  [EXTRACTED]
+  App.tsx → context/AuthContext.tsx
+- `usePlutchikProfileGate()` --calls--> `checkPlutchikProfile()`  [EXTRACTED]
+  App.tsx → services/firestoreService.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (38 total, 4 thin omitted)
+## Communities (35 total, 4 thin omitted)
 
-### Community 0 - "AuthContext.tsx"
-Cohesion: 0.18
-Nodes (14): AuthContext, AuthContextType, AuthProvider(), app, auth, db, firebaseConfig, AdminOilsScreen() (+6 more)
+### Community 0 - "useAuth"
+Cohesion: 0.38
+Nodes (6): useAuth(), SecurityScreen(), SignInScreen(), VerifyEmailScreen(), AUTH_ERROR_MESSAGES, friendlyAuthError()
 
-### Community 1 - "CompassService"
-Cohesion: 0.10
-Nodes (12): DevDateTraveller(), shiftDays(), toDateStr(), formatTime(), PatternCard(), PatternCardProps, CompassService, readDevDateOverride() (+4 more)
+### Community 1 - "DevDateTraveller.tsx"
+Cohesion: 0.57
+Nodes (5): DevDateTraveller(), shiftDays(), toDateStr(), readDevDateOverride(), setDevDateOverride()
 
 ### Community 2 - "devDependencies"
 Cohesion: 0.04
 Nodes (44): @capacitor/assets, @capacitor/cli, esbuild, fast-check, author, description, devDependencies, @capacitor/assets (+36 more)
 
-### Community 3 - "QuizResultScreen.tsx"
-Cohesion: 0.16
-Nodes (20): TELEGRAM_USERNAME, CartContext, CartContextType, CartProvider(), useCart(), AdminOrdersScreen(), STATUS_COLORS, STATUS_LABELS (+12 more)
+### Community 3 - "PullToRefresh.tsx"
+Cohesion: 0.30
+Nodes (12): findScroller(), isAtTop(), PullToRefresh(), PullToRefreshProps, ENGAGE_AT, isRefreshTriggered(), MAX_PULL, PULL_RESISTANCE (+4 more)
 
-### Community 4 - "shortlist.ts"
-Cohesion: 0.19
-Nodes (17): DEFAULT_CONFIG, RecommendationConfig, bannedOilIds(), EveningFeedbackEntry, now, candidateShortlist(), CandidateShortlistInput, coverageTargets() (+9 more)
+### Community 4 - "types.ts"
+Cohesion: 0.06
+Nodes (49): EmotionMeta, EMOTIONS, PlutchikWheel(), PlutchikWheelProps, QUIZ_QUESTIONS, OIL_DATABASE, EXPECTED_BY_DYAD, OnboardingResultScreen() (+41 more)
 
 ### Community 5 - "WearableService"
 Cohesion: 0.10
@@ -114,7 +111,7 @@ Nodes (24): 0. Резюме (elevator pitch), 10. Качество и сопро
 
 ### Community 8 - "DashboardScreen.tsx"
 Cohesion: 0.11
-Nodes (22): EmotionSymbol(), EmotionSymbolProps, FeatureLock(), FeatureLockProps, METAPHORIC_CARDS, MetaphoricCard, getQuoteForDay(), getRandomQuote() (+14 more)
+Nodes (23): EmotionSymbol(), EmotionSymbolProps, FeatureLock(), FeatureLockProps, EMOTIONS, METAPHORIC_CARDS, MetaphoricCard, getQuoteForDay() (+15 more)
 
 ### Community 9 - "aromaRecommendationService.ts"
 Cohesion: 0.10
@@ -125,16 +122,16 @@ Cohesion: 0.10
 Nodes (20): DOM, DOM.Iterable, ES2022, node, compilerOptions, allowImportingTsExtensions, allowJs, experimentalDecorators (+12 more)
 
 ### Community 11 - "server.ts"
-Cohesion: 0.20
-Nodes (18): defaultAromaReason(), defaultInsight(), defaultTomorrowTeaser(), ensureAdminAuth(), mintFirebaseCustomToken(), MODE_REASON, modeFor(), OilSelection (+10 more)
+Cohesion: 0.08
+Nodes (46): EMOTION_OILS, EmotionOilBinding, oilsForEmotion(), primaryOilFor(), EMOTIONS, findOilByName(), emotionalReasonFor(), OIL_EMOTIONAL_REASONS (+38 more)
 
 ### Community 12 - "ruStoreUpdate.ts"
-Cohesion: 0.12
-Nodes (7): App(), root, rootElement, CapgoUpdateInfo, AppUpdateInfo, RuStoreAppUpdate, RuStoreAppUpdatePlugin
+Cohesion: 0.25
+Nodes (3): AppUpdateInfo, RuStoreAppUpdate, RuStoreAppUpdatePlugin
 
 ### Community 13 - "MyTrackerService"
-Cohesion: 0.22
-Nodes (4): privacyPolicyText, termsOfServiceText, LegalScreen(), MyTrackerService
+Cohesion: 0.19
+Nodes (5): privacyPolicyText, termsOfServiceText, LegalScreen(), MyTrackerService, Window
 
 ### Community 14 - "Интеграция автообновлений Capgo (Capacitor Updater)"
 Cohesion: 0.18
@@ -153,76 +150,64 @@ Cohesion: 0.29
 Nodes (7): OperationType, CREATE, DELETE, GET, LIST, UPDATE, WRITE
 
 ### Community 25 - "DailyRitual.tsx"
-Cohesion: 0.05
-Nodes (74): DailyRitual(), findCrossedUnlock(), QUICK_OPTIONS, UNLOCK_FEATURE_LABELS, Phase, PracticePlayer(), PracticePlayerProps, PRACTICE_COMPONENTS (+66 more)
+Cohesion: 0.06
+Nodes (64): DailyRitual(), findCrossedUnlock(), QUICK_OPTIONS, UNLOCK_FEATURE_LABELS, Phase, PracticePlayerProps, PRACTICE_COMPONENTS, CARE_OPTIONS (+56 more)
 
-### Community 26 - "practices/index.ts"
-Cohesion: 0.16
-Nodes (28): BodyScanPractice(), zoneIndexFor(), ZONES, ExpressiveWritingPractice(), LOCAL_STARTERS, breathPhase(), buildPath(), FingerTracingPractice() (+20 more)
+### Community 26 - "practiceMemory.ts"
+Cohesion: 0.10
+Nodes (45): PracticePlayer(), BodyScanPractice(), zoneIndexFor(), ZONES, ExpressiveWritingPractice(), LOCAL_STARTERS, breathPhase(), buildPath() (+37 more)
 
-### Community 27 - "inference.ts"
-Cohesion: 0.18
-Nodes (17): findOilByName(), EXPECTED_BY_DYAD, parseDyad(), dyadFor(), DYADS, isAdjacent(), buildFeedbackEntries(), bumpDominant() (+9 more)
+### Community 27 - "AuthContext.tsx"
+Cohesion: 0.12
+Nodes (24): TELEGRAM_USERNAME, AuthContext, AuthContextType, AuthProvider(), app, auth, db, firebaseConfig (+16 more)
 
 ### Community 28 - "firestoreService.ts"
-Cohesion: 0.16
-Nodes (35): checkPlutchikProfile(), getEmotionalGraphEntries(), getEmotionalGraphEntry(), getEmotionHistory(), getLocalHistory(), getPlutchikProfile(), getStreakInfo(), graphKey() (+27 more)
+Cohesion: 0.17
+Nodes (34): checkPlutchikProfile(), getEmotionalGraphEntries(), getEmotionalGraphEntry(), getEmotionHistory(), getLocalHistory(), getPlutchikProfile(), getStreakInfo(), graphKey() (+26 more)
 
 ### Community 29 - "App.tsx"
-Cohesion: 0.16
-Nodes (16): AppRoutes(), RequireNoOnboarding(), RequireOnboarding(), sleep(), usePlutchikProfileGate(), useAuth(), useFirestoreSync(), LockScreen() (+8 more)
+Cohesion: 0.11
+Nodes (17): App(), AppRoutes(), AppShell(), ProfileGateState, RequireNoOnboarding(), RequireOnboarding(), sleep(), usePlutchikProfileGate() (+9 more)
 
-### Community 30 - "ProfileScreen.tsx"
-Cohesion: 0.32
-Nodes (6): Theme, ThemeContext, ThemeContextType, ThemeProvider(), useTheme(), ProfileScreen()
+### Community 30 - "BottomNavBar.tsx"
+Cohesion: 0.19
+Nodes (9): BottomNavBar(), NavItemProps, Theme, ThemeContext, ThemeContextType, ThemeProvider(), useTheme(), CheckInScreen() (+1 more)
 
 ### Community 31 - "compassService.ts"
 Cohesion: 0.06
-Nodes (50): StreakDayScroller(), THRESHOLD_DAYS, EntryBridgeScreen(), FEEDBACK_OPTIONS, UNLOCK_PARTICLES, DEFAULT_PLUTCHIK, defaultProfile(), defaultStreak() (+42 more)
+Nodes (38): formatTime(), PatternCard(), PatternCardProps, StreakDayScroller(), THRESHOLD_DAYS, CompassService, DEFAULT_PLUTCHIK, defaultProfile() (+30 more)
 
 ### Community 32 - "devBridgeOverride.ts"
-Cohesion: 0.23
-Nodes (15): DevBridgeTester(), PATTERN_OPTIONS, SCENARIO_LABELS, UNLOCK_OPTIONS, buildDevEntryContext(), DEV_ENTRY_SCENARIOS, DevEntryScenario, DevPatternOverride (+7 more)
+Cohesion: 0.12
+Nodes (25): DevBridgeTester(), PATTERN_OPTIONS, SCENARIO_LABELS, UNLOCK_OPTIONS, EntryBridgeScreen(), FEEDBACK_OPTIONS, UNLOCK_PARTICLES, buildDevEntryContext() (+17 more)
 
-### Community 33 - "OnboardingResultScreen.tsx"
-Cohesion: 0.15
-Nodes (14): BottomNavBar(), NavItemProps, EMOTIONS, QUIZ_QUESTIONS, HistoryScreen(), OnboardingResultScreen(), QuizQuestionScreen(), dominantEmotionOf() (+6 more)
+### Community 35 - "QuizResultScreen.tsx"
+Cohesion: 0.26
+Nodes (12): CartContext, CartContextType, CartProvider(), useCart(), CabinetScreen(), CartIcon(), QuizResultScreen(), addUserOil() (+4 more)
 
-### Community 34 - "types.ts"
-Cohesion: 0.15
-Nodes (12): chronotypeForHour(), eveningFeedbackOptions(), FeedbackOption, Chronotype, CompassSettings, EveningFeedback, MixedEmotionKey, Oil (+4 more)
-
-### Community 35 - "shortlist.test.ts"
-Cohesion: 0.24
-Nodes (7): OIL_DATABASE, circle, crescent, fixture, star, MixedEmotion, OilEntry
-
-### Community 36 - "breathing.ts"
-Cohesion: 0.60
-Nodes (4): breathingPatternFor(), parseBreathPattern(), PATTERN_DEFAULT, PATTERN_STUCK
-
-### Community 37 - "PlutchikWheel.tsx"
-Cohesion: 0.40
-Nodes (4): EmotionMeta, EMOTIONS, PlutchikWheel(), PlutchikWheelProps
+### Community 37 - "ResourcesScreen.tsx"
+Cohesion: 0.38
+Nodes (5): CRISIS_RESOURCES, CrisisResource, GROUNDING_EXERCISES, GroundingExercise, ResourcesScreen()
 
 ## Knowledge Gaps
-- **203 isolated node(s):** `config`, `AromaBreathingModalProps`, `Phase`, `NavItemProps`, `BreathingCircleProps` (+198 more)
+- **210 isolated node(s):** `ProfileGateState`, `config`, `AromaBreathingModalProps`, `Phase`, `NavItemProps` (+205 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **4 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `CompassService` connect `CompassService` to `OnboardingResultScreen.tsx`, `DashboardScreen.tsx`, `aromaRecommendationService.ts`, `DailyRitual.tsx`, `App.tsx`, `compassService.ts`?**
-  _High betweenness centrality (0.037) - this node is a cross-community bridge._
-- **Why does `EmotionKey` connect `DailyRitual.tsx` to `OnboardingResultScreen.tsx`, `CompassService`, `types.ts`, `shortlist.ts`, `PlutchikWheel.tsx`, `DashboardScreen.tsx`, `aromaRecommendationService.ts`, `server.ts`, `practices/index.ts`, `inference.ts`, `firestoreService.ts`, `compassService.ts`?**
-  _High betweenness centrality (0.034) - this node is a cross-community bridge._
-- **Why does `BottomNavBar()` connect `OnboardingResultScreen.tsx` to `QuizResultScreen.tsx`, `WearableService`, `DashboardScreen.tsx`, `DailyRitual.tsx`, `ProfileScreen.tsx`?**
-  _High betweenness centrality (0.033) - this node is a cross-community bridge._
-- **What connects `config`, `AromaBreathingModalProps`, `Phase` to the rest of the system?**
-  _203 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `CompassService` be split into smaller, more focused modules?**
-  _Cohesion score 0.09936575052854123 - nodes in this community are weakly interconnected._
+- **Why does `CompassService` connect `compassService.ts` to `devBridgeOverride.ts`, `types.ts`, `DashboardScreen.tsx`, `aromaRecommendationService.ts`, `DailyRitual.tsx`, `App.tsx`?**
+  _High betweenness centrality (0.036) - this node is a cross-community bridge._
+- **Why does `EmotionKey` connect `DailyRitual.tsx` to `types.ts`, `DashboardScreen.tsx`, `aromaRecommendationService.ts`, `server.ts`, `practiceMemory.ts`, `firestoreService.ts`, `compassService.ts`?**
+  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+- **Why does `BottomNavBar()` connect `BottomNavBar.tsx` to `QuizResultScreen.tsx`, `types.ts`, `WearableService`, `ResourcesScreen.tsx`, `DashboardScreen.tsx`?**
+  _High betweenness centrality (0.032) - this node is a cross-community bridge._
+- **What connects `ProfileGateState`, `config`, `AromaBreathingModalProps` to the rest of the system?**
+  _210 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `devDependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.044444444444444446 - nodes in this community are weakly interconnected._
+- **Should `types.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.062206572769953054 - nodes in this community are weakly interconnected._
 - **Should `WearableService` be split into smaller, more focused modules?**
   _Cohesion score 0.09523809523809523 - nodes in this community are weakly interconnected._

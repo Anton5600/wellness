@@ -149,3 +149,43 @@ describe('candidateShortlist', () => {
     }
   });
 });
+
+/**
+ * Жёсткая привязка «эмоция → масло» (пункт C) и порядок ранжирования (пункт B).
+ * Регрессия к случаю «доминанта Радость, а рекомендуется Бергамот»: при одиночной
+ * эмоции первым обязан идти главный масло эмоции из источников.
+ */
+describe('привязка «эмоция → масло»', () => {
+  const singleDominant = vec({ joy: 0.9, trust: 0.15, fear: 0.15, surprise: 0.15, sadness: 0.15, disgust: 0.2, anger: 0.15, anticipation: 0.15 });
+
+  it('для доминанты «Радость» первым идёт Дикий апельсин, вторым — Мята перечная', () => {
+    const ids = candidateShortlist({ vector: singleDominant, hour: 13, feedback: [], dominant: 'joy', oilDb: OIL_DATABASE }).map((o) => o.id);
+    expect(ids[0]).toBe('wild_orange');
+    expect(ids[1]).toBe('peppermint');
+  });
+
+  it('привязанное масло не выпадает из шорт-листа из-за времени суток', () => {
+    // Дикий апельсин размечен как morning/day, но в 21:00 он обязан остаться первым.
+    const ids = candidateShortlist({ vector: singleDominant, hour: 21, feedback: [], dominant: 'joy', oilDb: OIL_DATABASE }).map((o) => o.id);
+    expect(ids[0]).toBe('wild_orange');
+  });
+
+  it('забаненное главное масло уступает место следующему из привязки', () => {
+    const feedback = [{ oilId: 'wild_orange', feedback: 'worse' as const, timestamp: Date.now() - 1000 }];
+    const ids = candidateShortlist({ vector: singleDominant, hour: 13, feedback, dominant: 'joy', oilDb: OIL_DATABASE }).map((o) => o.id);
+    expect(ids).not.toContain('wild_orange');
+    expect(ids[0]).toBe('peppermint');
+  });
+
+  it('покрытие целевой эмоции важнее числа совпадений по режиму (пункт B)', () => {
+    const oils: OilEntry[] = [
+      // Два совпадения по режиму, но эмоция не та.
+      { id: 'two_matches', name: 'T', description: '', icon: '', effects: [{ emotion: 'sadness', mode: 'balance' }, { emotion: 'disgust', mode: 'balance' }], chronotype: ['morning', 'day'], instruction: '' },
+      // Одно совпадение, зато работает именно с доминантой.
+      { id: 'covers_joy', name: 'C', description: '', icon: '', effects: [{ emotion: 'joy', mode: 'balance' }], chronotype: ['morning', 'day'], instruction: '' },
+      // Диады нет, привязка joy указывает на реальные id — их в фикстуре нет, поэтому работает общий ранг.
+    ];
+    const ids = candidateShortlist({ vector: singleDominant, hour: 13, feedback: [], dominant: 'joy', oilDb: oils }).map((o) => o.id);
+    expect(ids[0]).toBe('covers_joy');
+  });
+});

@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { compassService } from '../services/compassService';
 import { getUserOils } from '../services/firestoreService';
 import { SYNC_EVENT } from '../hooks/useFirestoreSync';
-import { findOilById } from '../data/oilDatabase';
+import { findOilById, OIL_DATABASE } from '../data/oilDatabase';
+import { oilsForEmotion } from '../data/emotionOils';
 import { PRACTICE_BY_ID } from '../data/practices';
 import { selectPractice, bannedPracticeIds, preferredPracticeIds } from '../services/recommendation/practice';
 import { UNLOCK_DAYS } from '../services/recommendation/unlock';
@@ -372,6 +373,22 @@ export const DailyRitual: React.FC = () => {
   const feedbackOptions = eveningFeedbackOptions(isPositiveDominant);
   const hasRecommendedOil = todayEntry?.aromaId ? ownedOilIds.has(todayEntry.aromaId) : true;
 
+  /**
+   * Альтернативные масла для текущего состояния: для одиночной эмоции — из привязки
+   * «эмоция → масло» (`data/emotionOils.ts`), для смешанной — размеченные под её диаду.
+   * Рекомендованное масло исключаем, чтобы не дублировать его в списке.
+   */
+  const alternativeOils = React.useMemo(() => {
+    if (!todayEntry) return [];
+    const ids = todayEntry.dyad
+      ? OIL_DATABASE.filter((o) => o.dyads?.includes(todayEntry.dyad!.key)).map((o) => o.id)
+      : oilsForEmotion(todayEntry.dominant);
+    return ids
+      .filter((id) => id !== todayEntry.aromaId)
+      .map((id) => findOilById(id))
+      .filter((o): o is NonNullable<ReturnType<typeof findOilById>> => Boolean(o));
+  }, [todayEntry]);
+
   // Практика дня: детерминированный выбор по доминирующей эмоции + бан «не помогло» + приоритет «помогло».
   const practiceId = useMemo(() => {
     if (!todayEntry) return null;
@@ -604,6 +621,16 @@ export const DailyRitual: React.FC = () => {
                 <p className="text-xs text-sage dark:text-gray-400 italic flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-base">touch_app</span>
                   {oil.instruction}
+                </p>
+              )}
+              {alternativeOils.length > 0 && (
+                <p className="text-xs text-sage dark:text-gray-400 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-primary text-base">spa</span>
+                  <span>
+                    {todayEntry.dyad ? 'Другие масла для этой смеси' : 'Другие масла для этого состояния'}
+                    {': '}
+                    {alternativeOils.map((o) => o.name).join(', ')}
+                  </span>
                 </p>
               )}
             </div>

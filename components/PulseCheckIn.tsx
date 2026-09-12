@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { EmotionalGraphEntry, PracticeId, PulseEntry, PulseScenario, PracticeFeedback } from '../types';
 import { compassService } from '../services/compassService';
 import { selectPractice, bannedPracticeIds, preferredPracticeIds, inferArousal } from '../services/recommendation/practice';
-import { pulseGate, PULSE_CONFIG } from '../services/recommendation/pulse';
+import { pulseGate, pulseDirection, PULSE_CONFIG } from '../services/recommendation/pulse';
 import { EMOTION_LABELS } from '../services/recommendation/inference';
 import { NEGATIVE_EMOTIONS } from '../services/recommendation/pattern';
 import { PRACTICE_BY_ID } from '../data/practices';
@@ -71,6 +71,11 @@ export const PulseCheckIn: React.FC<PulseCheckInProps> = ({
   const dominantLabel = result ? EMOTION_LABELS[result.pulse.dominant] : '';
   const isNegativePulse = result ? NEGATIVE_EMOTIONS.includes(result.pulse.dominant) : false;
   const emergencyPractice = result ? PRACTICE_BY_ID[result.practiceId] : null;
+  // Сценарий `shift` говорит только «состояние изменилось», не различая знак. Направление
+  // считаем отдельно — иначе улучшение получало текст про «выбило из колеи».
+  const improved = result
+    ? pulseDirection(entry.plutchikInferred, result.pulse.vector) === 'improved'
+    : false;
 
   const handleOpen = () => {
     setGateMsg(null);
@@ -249,10 +254,14 @@ export const PulseCheckIn: React.FC<PulseCheckInProps> = ({
     <div className="bg-white dark:bg-[#1f1f1f] rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-800">
       <div className="flex items-center gap-2 mb-3">
         <span className="material-symbols-outlined text-primary text-xl">
-          {result?.scenario === 'shift' ? 'bolt' : 'check_circle'}
+          {result?.scenario === 'shift'
+            ? (improved ? 'trending_up' : 'bolt')
+            : 'check_circle'}
         </span>
         <h3 className="text-base font-bold text-forest dark:text-white">
-          {result?.scenario === 'shift' ? 'Состояние изменилось' : 'Состояние стабильно'}
+          {result?.scenario === 'shift'
+            ? (improved ? 'Стало легче' : 'Состояние изменилось')
+            : 'Состояние стабильно'}
         </h3>
       </div>
 
@@ -284,7 +293,9 @@ export const PulseCheckIn: React.FC<PulseCheckInProps> = ({
       ) : (
         <>
           <p className="text-sm text-forest/80 dark:text-gray-300 leading-relaxed">
-            Похоже, что-то выбило тебя из колеи. Дай себе минуту вернуться в тело.
+            {improved
+              ? `${dominantLabel} — состояние сдвинулось в лучшую сторону. Задержись в нём: утренняя практика поможет закрепить.`
+              : 'Похоже, что-то выбило тебя из колеи. Дай себе минуту вернуться в тело.'}
           </p>
 
           {emergencyPractice && (

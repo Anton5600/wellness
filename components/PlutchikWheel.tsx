@@ -1,5 +1,6 @@
 import React from 'react';
 import { PlutchikVector, EmotionKey } from '../types';
+import { EMOTION_LABELS } from '../services/recommendation/inference';
 
 interface PlutchikWheelProps {
   vector: PlutchikVector;
@@ -11,20 +12,24 @@ interface PlutchikWheelProps {
 
 interface EmotionMeta {
   key: EmotionKey;
-  label: string;
   color: string;
   angle: number; // in degrees
 }
 
+/**
+ * Цвета и углы осей колеса. Названия берём из `EMOTION_LABELS`, а не дублируем здесь:
+ * раньше ось `sadness` подписывалась «Печаль», а движок и тексты рекомендаций звали ту же
+ * эмоцию «Грусть» — на экране это читалось как две разные эмоции.
+ */
 const EMOTIONS: EmotionMeta[] = [
-  { key: 'joy', label: 'Радость', color: '#f59e0b', angle: 0 },
-  { key: 'trust', label: 'Доверие', color: '#10b981', angle: 45 },
-  { key: 'fear', label: 'Страх', color: '#059669', angle: 90 },
-  { key: 'surprise', label: 'Удивление', color: '#0284c7', angle: 135 },
-  { key: 'sadness', label: 'Печаль', color: '#3b82f6', angle: 180 },
-  { key: 'disgust', label: 'Отвращение', color: '#8b5cf6', angle: 225 },
-  { key: 'anger', label: 'Гнев', color: '#ef4444', angle: 270 },
-  { key: 'anticipation', label: 'Ожидание', color: '#f97316', angle: 315 },
+  { key: 'joy', color: '#f59e0b', angle: 0 },
+  { key: 'trust', color: '#10b981', angle: 45 },
+  { key: 'fear', color: '#059669', angle: 90 },
+  { key: 'surprise', color: '#0284c7', angle: 135 },
+  { key: 'sadness', color: '#3b82f6', angle: 180 },
+  { key: 'disgust', color: '#8b5cf6', angle: 225 },
+  { key: 'anger', color: '#ef4444', angle: 270 },
+  { key: 'anticipation', color: '#f97316', angle: 315 },
 ];
 
 export const PlutchikWheel: React.FC<PlutchikWheelProps> = ({
@@ -127,7 +132,7 @@ export const PlutchikWheel: React.FC<PlutchikWheelProps> = ({
                 fontWeight="700"
                 fill={e.color}
               >
-                {e.label}
+                {EMOTION_LABELS[e.key]}
               </text>
             </g>
           );

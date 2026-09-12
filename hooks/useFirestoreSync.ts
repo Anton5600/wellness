@@ -10,6 +10,16 @@ export const SYNC_EVENT = 'compass:sync';
 const SYNC_INTERVAL_MS = 60_000;
 
 /**
+ * Разовая синхронизация с рассылкой `SYNC_EVENT`: экраны молча перечитывают данные.
+ * Используется фоновой синхронизацией и ручным обновлением (pull-to-refresh), чтобы
+ * правило «синхронизировали → сообщили экранам» жило в одном месте.
+ */
+export const syncNow = async (uid: string): Promise<void> => {
+  await syncFromFirestore(uid);
+  window.dispatchEvent(new Event(SYNC_EVENT));
+};
+
+/**
  * Фоновая синхронизация с Firestore, чтобы данные профиля (граф/стрик/профиль) были
  * актуальны на всех устройствах. Запускается при входе/смене аккаунта, при возврате
  * приложения на передний план и периодически (каждые 60 с). После каждой синхронизации
@@ -27,8 +37,8 @@ export const useFirestoreSync = (): void => {
 
     const run = async () => {
       try {
-        await syncFromFirestore(uid);
-        if (!cancelled) window.dispatchEvent(new Event(SYNC_EVENT));
+        if (cancelled) return;
+        await syncNow(uid);
       } catch (e) {
         console.warn('[sync] failed:', e);
       }
